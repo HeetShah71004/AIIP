@@ -11,7 +11,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, user } = useAuth();
+  const { login, googleLogin, user } = useAuth();
   const navigate = useNavigate();
 
   // Redirection is now handled directly in handleSubmit for guaranteed consistency
