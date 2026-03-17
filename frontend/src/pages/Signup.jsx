@@ -52,30 +52,30 @@ const Signup = () => {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Name</label>
-            <input 
-              type="text" 
-              value={formData.name} 
-              onChange={(e) => setFormData({...formData, name: e.target.value})} 
-              required 
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
             />
           </div>
           <div className="form-group">
             <label>Email</label>
-            <input 
-              type="email" 
-              value={formData.email} 
-              onChange={(e) => setFormData({...formData, email: e.target.value})} 
-              required 
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
             />
           </div>
           <div className="form-group">
             <label>Password</label>
             <div style={{ position: 'relative', marginTop: '0.5rem' }}>
-              <input 
-                type={showPassword ? "text" : "password"} 
-                value={formData.password} 
-                onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                required 
+              <input
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
                 style={{ paddingRight: '3rem', marginTop: 0 }}
               />
               <button

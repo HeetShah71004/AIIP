@@ -55,22 +55,22 @@ const Login = () => {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Email</label>
-            <input 
-              type="email" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              required 
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
               placeholder="Enter your email"
             />
           </div>
           <div className="form-group">
             <label>Password</label>
             <div style={{ position: 'relative', marginTop: '0.5rem' }}>
-              <input 
-                type={showPassword ? "text" : "password"} 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 placeholder="Enter your password"
                 style={{ paddingRight: '3rem', marginTop: 0 }}
               />
