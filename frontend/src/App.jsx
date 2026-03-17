@@ -10,6 +10,7 @@ import './styles/global.css';
 
 import Dashboard from './pages/Dashboard';
 import ResumeUpload from './pages/ResumeUpload';
+import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
 import './styles/global.css';
 
@@ -49,6 +50,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ResumeUpload />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } 
           />

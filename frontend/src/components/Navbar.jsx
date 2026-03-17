@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Upload } from 'lucide-react';
+import { LogOut, LayoutDashboard, Upload, User } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -20,6 +20,9 @@ const Navbar = () => {
       <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
         <Link to="/upload" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text)', textDecoration: 'none' }}>
           <Upload size={20} /> Upload Resume
+        </Link>
+        <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text)', textDecoration: 'none' }}>
+          <User size={20} /> Profile
         </Link>
         <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
           <LogOut size={20} /> Logout
