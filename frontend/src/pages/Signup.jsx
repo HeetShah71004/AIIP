@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../api/client';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 
 const Signup = () => {
@@ -99,7 +100,7 @@ const Signup = () => {
             </div>
           </div>
           <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center' }} disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" /> : 'Sign Up'}
+            {loading ? <LoadingSpinner size={20} message={null} /> : 'Sign Up'}
           </button>
         </form>
         <div style={{ margin: '1.5rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>

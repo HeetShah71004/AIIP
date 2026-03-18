@@ -13,9 +13,23 @@ const sessionSchema = new mongoose.Schema({
   resumeText: String,
   resumeUrl: String,
   parsedData: {
+    developerTitle: String,
+    primaryStack: String,
     skills: [String],
-    experience: [Object],
+    projects: [Object],
     education: [Object]
+  },
+  duration: {
+    type: Number, // duration in seconds
+    default: 0
+  },
+  totalQuestions: {
+    type: Number,
+    default: 5
+  },
+  completedQuestions: {
+    type: Number,
+    default: 0
   },
   status: {
     type: String,
@@ -25,6 +39,9 @@ const sessionSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  completedAt: {
+    type: Date
   }
 });
 

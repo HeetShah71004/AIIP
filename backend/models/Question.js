@@ -6,13 +6,21 @@ const questionSchema = new mongoose.Schema({
     ref: 'Session',
     required: true
   },
+  questionBankId: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'QuestionBank'
+  },
   text: {
     type: String,
     required: true
   },
   answer: String,
   feedback: {
-    score: Number,
+    score: { type: Number, min: 0, max: 10 },
+    clarity: { type: Number, min: 0, max: 10 },
+    depth: { type: Number, min: 0, max: 10 },
+    relevance: { type: Number, min: 0, max: 10 },
+    analysis: String,
     strengths: [String],
     weaknesses: [String],
     suggestions: [String]

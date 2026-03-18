@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { Upload, FileText, CheckCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const ResumeUpload = () => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [parsedData, setParsedData] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -37,6 +41,7 @@ const ResumeUpload = () => {
         }
       });
       setParsedData(res.data.data.parsedData);
+      setSessionId(res.data.data._id);
       setProgress(100);
     } catch (err) {
       setError(err.response?.data?.error || 'Upload failed');
@@ -73,7 +78,7 @@ const ResumeUpload = () => {
               onClick={handleUpload}
               disabled={uploading}
             >
-              {uploading ? <Loader2 className="animate-spin" /> : 'Process Resume'}
+              {uploading ? <LoadingSpinner size={20} message={null} /> : 'Process Resume'}
             </button>
           )}
 
@@ -96,8 +101,16 @@ const ResumeUpload = () => {
               <h2 style={{ color: 'var(--text)' }}>Parsed Successfully</h2>
             </div>
             
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>IDENTIFIED ROLE</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '1rem' }}>{parsedData.developerTitle}</div>
+              
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>PRIMARY STACK</div>
+              <div style={{ fontSize: '1rem', fontWeight: '600' }}>{parsedData.primaryStack}</div>
+            </div>
+
             <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>SKILLS</h3>
+              <h3 style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>ALL DETECTED SKILLS</h3>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {parsedData.skills.map(s => (
                   <span key={s} style={{ background: 'var(--card-bg)', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.875rem', border: '1px solid var(--border)' }}>{s}</span>
@@ -106,16 +119,31 @@ const ResumeUpload = () => {
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>EXPERIENCE</h3>
-              {parsedData.experience.map((exp, i) => (
-                <div key={i} style={{ marginBottom: '0.75rem' }}>
-                  <div style={{ fontWeight: 'bold' }}>{exp.title}</div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{exp.company} • {exp.duration}</div>
+              <h3 style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>KEY PROJECTS</h3>
+              {parsedData.projects.map((proj, i) => (
+                <div key={i} style={{ marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: i === 0 && parsedData.projects.length > 1 ? '1px dotted var(--border)' : 'none' }}>
+                  <div style={{ fontWeight: 'bold', color: 'var(--text)' }}>{proj.name}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.25rem' }}>
+                    {proj.languages.map(lang => (
+                      <span key={lang} style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'rgba(99, 102, 241, 0.1)', padding: '0.1rem 0.5rem', borderRadius: '4px' }}>{lang}</span>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
 
-            <button className="btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
+            <button 
+              className="btn-primary" 
+              style={{ width: '100%', marginTop: '1rem' }}
+              onClick={async () => {
+                try {
+                  const res = await api.post('/sessions/start', { useResume: true, totalQuestions: 5 });
+                  navigate(`/interview/${res.data.data._id}`);
+                } catch (err) {
+                  setError('Failed to start resume-based interview');
+                }
+              }}
+            >
               Start Interview Simulation
             </button>
           </div>

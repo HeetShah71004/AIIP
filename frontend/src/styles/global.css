@@ -74,3 +74,94 @@ input:focus {
   outline: none;
   border-color: var(--primary);
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.loading-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--bg);
+  gap: 1rem;
+}
+
+.loading-text {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Profile Badge & Avatar Styles */
+.profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  color: var(--text);
+}
+
+.profile-badge.standalone {
+  padding: 2px;
+  background: none;
+  border: none;
+}
+
+.profile-badge:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.profile-badge.standalone:hover {
+  background: none;
+  transform: scale(1.1);
+}
+
+.profile-badge.standalone:hover .avatar-circle {
+  border-color: var(--primary);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+}
+
+.avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  background: linear-gradient(135deg, var(--primary), #818cf8);
+  color: white;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-name {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--text);
+}

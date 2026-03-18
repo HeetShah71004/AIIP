@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Upload, User } from 'lucide-react';
+import { LogOut, LayoutDashboard, Upload, BarChart3, User as UserIcon } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -23,8 +23,21 @@ const Navbar = () => {
         <Link to="/upload" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text)', textDecoration: 'none' }}>
           <Upload size={20} /> Upload Resume
         </Link>
-        <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text)', textDecoration: 'none' }}>
-          <User size={20} /> Profile
+        <Link to="/profile" className="profile-badge standalone" title={user.name || user.email}>
+          <div className="avatar-circle">
+            {user.avatar ? (
+              <img src={user.avatar} alt={user.name || 'User'} />
+            ) : (
+              (user.name || user.email) ? (
+                <span>{(user.name || user.email).charAt(0).toUpperCase()}</span>
+              ) : (
+                <UserIcon size={20} />
+              )
+            )}
+          </div>
+        </Link>
+        <Link to="/analytics" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text)', textDecoration: 'none' }}>
+          <BarChart3 size={20} /> Analytics
         </Link>
         <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
           <LogOut size={20} /> Logout

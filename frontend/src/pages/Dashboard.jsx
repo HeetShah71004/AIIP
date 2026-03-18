@@ -6,24 +6,21 @@ import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const [sessions, setSessions] = useState([]);
+  const [stats, setStats] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchSessions = async () => {
       try {
-        const res = await api.get('/resume/sessions'); // Need to implement this backend endpoint
-        setSessions(res.data.data);
+        const res = await api.get('/analytics/summary');
+        setSessions(res.data.data.sessionHistory);
+        setStats(res.data.data);
       } catch (err) {
         console.error('Failed to fetch sessions');
       }
     };
-    // fetchSessions();
-    // Providing mock data for immediate visual result
-    setSessions([
-      { _id: '1', createdAt: new Date().toISOString(), score: 85, status: 'completed' },
-      { _id: '2', createdAt: new Date(Date.now() - 86400000).toISOString(), score: 72, status: 'completed' }
-    ]);
+    fetchSessions();
   }, []);
 
   return (
@@ -45,7 +42,7 @@ const Dashboard = () => {
           </div>
           <div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Sessions Completed</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>12</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats?.totalSessions || 0}</div>
           </div>
         </div>
         <div className="glass" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -54,7 +51,7 @@ const Dashboard = () => {
           </div>
           <div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Average Score</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>78%</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(stats?.avgOverallScore * 10).toFixed(0) || 0}%</div>
           </div>
         </div>
         <div className="glass" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -63,26 +60,39 @@ const Dashboard = () => {
           </div>
           <div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Current Streak</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>4 Days</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats?.streak || 0} Days</div>
           </div>
         </div>
       </div>
 
       <section>
         <h2 style={{ marginBottom: '1.5rem' }}>Recent Activity</h2>
-        <div className="glass" style={{ padding: '1rem' }}>
+        <div className="glass" style={{ padding: '0 1rem' }}>
           {sessions.length === 0 ? (
             <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No recent activity. Start an interview!</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               {sessions.map(s => (
-                <div key={s._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid var(--border)' }}>
+                <div 
+                  key={s._id} 
+                  onClick={() => navigate(`/feedback/${s._id}`)}
+                  className="activity-item"
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '1.25rem 1rem', 
+                    borderBottom: '1px solid var(--border)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
                   <div>
-                    <div style={{ fontWeight: '500' }}>Interview Session</div>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{new Date(s.createdAt).toLocaleDateString()}</div>
+                    <div style={{ fontWeight: '600' }}>Interview Session</div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{new Date(s.completedAt || s.createdAt).toLocaleString()}</div>
                   </div>
-                  <div style={{ fontWeight: 'bold', color: s.score >= 70 ? 'var(--success)' : 'var(--primary)' }}>
-                    {s.score}%
+                  <div style={{ fontWeight: 'bold', color: s.score >= 7 ? 'var(--success)' : 'var(--primary)', fontSize: '1.125rem' }}>
+                    {(s.score * 10).toFixed(0)}%
                   </div>
                 </div>
               ))}
@@ -90,6 +100,16 @@ const Dashboard = () => {
           )}
         </div>
       </section>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .activity-item:hover {
+          background: rgba(255, 255, 255, 0.03);
+          transform: translateX(4px);
+        }
+        .activity-item:last-child {
+          border-bottom: none !important;
+        }
+      ` }} />
     </div>
   );
 };

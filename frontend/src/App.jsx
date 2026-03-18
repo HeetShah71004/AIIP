@@ -11,6 +11,9 @@ import './styles/global.css';
 import Dashboard from './pages/Dashboard';
 import ResumeUpload from './pages/ResumeUpload';
 import Profile from './pages/Profile';
+import MockInterview from './pages/MockInterview';
+import InterviewFeedback from './pages/InterviewFeedback';
+import Analytics from './pages/Analytics';
 import Navbar from './components/Navbar';
 import './styles/global.css';
 
@@ -58,6 +61,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/interview/:sessionId" 
+            element={
+              <ProtectedRoute>
+                <MockInterview />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/feedback/:sessionId" 
+            element={
+              <ProtectedRoute>
+                <InterviewFeedback />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/analytics" 
+            element={
+              <ProtectedRoute>
+                <Analytics />
               </ProtectedRoute>
             } 
           />
