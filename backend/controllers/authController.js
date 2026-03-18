@@ -85,9 +85,17 @@ export const googleLogin = async (req, res, next) => {
 
     if (user) {
       // If user exists but doesn't have googleId (registered via email), link account
+      let needsSave = false;
       if (!user.googleId) {
         user.googleId = sub;
-        if (!user.avatar) user.avatar = picture;
+        needsSave = true;
+      }
+      // Always update avatar from Google to keep it current
+      if (picture && user.avatar !== picture) {
+        user.avatar = picture;
+        needsSave = true;
+      }
+      if (needsSave) {
         await user.save();
       }
     } else {

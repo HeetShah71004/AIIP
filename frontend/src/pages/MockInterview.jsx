@@ -16,6 +16,7 @@ const MockInterview = () => {
     const [submitting, setSubmitting] = useState(false);
     const [chatHistory, setChatHistory] = useState([]);
     const [timeLeft, setTimeLeft] = useState(1800); // 30 minutes
+    const [showSkipModal, setShowSkipModal] = useState(false);
     const scrollRef = useRef(null);
 
     useEffect(() => {
@@ -94,8 +95,7 @@ const MockInterview = () => {
     }, []);
 
     const handleSkip = async () => {
-        if (!window.confirm('Are you sure you want to skip this question? You will get 0 score for it.')) return;
-
+        setShowSkipModal(false);
         const currentQuestion = questions[currentQuestionIndex];
         const userMessage = { type: 'user', text: '[Question Skipped]', timestamp: new Date() };
         setChatHistory([...chatHistory, userMessage]);
@@ -252,16 +252,20 @@ const MockInterview = () => {
                     ))}
                     {submitting && (
                         <div className="message-wrapper ai">
-                            <div className="message pulse">
-                                <Loader2 className="animate-spin" size={20} />
-                                <span>AI is evaluating your answer...</span>
+                            <div className="message premium-loader">
+                                <div className="loader-dots">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                                <span className="loader-text">AI is evaluating your response...</span>
                             </div>
                         </div>
                     )}
                 </div>
 
                 <form className="chat-input-area" onSubmit={handleSubmit}>
-                    <button type="button" className="skip-btn" onClick={handleSkip} disabled={submitting || currentQuestionIndex >= questions.length} title="Skip this question">
+                    <button type="button" className="skip-btn" onClick={() => setShowSkipModal(true)} disabled={submitting || currentQuestionIndex >= questions.length} title="Skip this question">
                         <XCircle size={20} />
                         <span>Skip Case</span>
                     </button>
@@ -276,6 +280,22 @@ const MockInterview = () => {
                     </button>
                 </form>
             </div>
+
+            {showSkipModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content glass">
+                        <div className="modal-header">
+                            <XCircle size={48} color="#ef4444" className="warning-icon" />
+                            <h2>Skip this question?</h2>
+                        </div>
+                        <p>Are you sure you want to skip this case? You will receive a score of 0 for this question, which will affect your overall performance.</p>
+                        <div className="modal-actions">
+                            <button className="btn-secondary" onClick={() => setShowSkipModal(false)}>Cancel</button>
+                            <button className="btn-danger-filled" onClick={handleSkip}>Yes, Skip Case</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             
             <style dangerouslySetInnerHTML={{ __html: `
                 .interview-page { display: flex; height: calc(100vh - 64px); background: #0f172a; color: white; overflow: hidden; }
@@ -312,6 +332,95 @@ const MockInterview = () => {
                 .q-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
                 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+                /* Premium Loader Styles */
+                .premium-loader {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    background: rgba(99, 102, 241, 0.08) !important;
+                    border: 1px solid rgba(99, 102, 241, 0.2) !important;
+                    padding: 1.25rem 2rem !important;
+                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+                }
+                .loader-dots { display: flex; gap: 4px; }
+                .loader-dots span {
+                    width: 8px;
+                    height: 8px;
+                    background: var(--primary);
+                    border-radius: 50%;
+                    animation: dotPulse 1.4s infinite ease-in-out both;
+                }
+                .loader-dots span:nth-child(1) { animation-delay: -0.32s; }
+                .loader-dots span:nth-child(2) { animation-delay: -0.16s; }
+                @keyframes dotPulse {
+                    0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+                    40% { transform: scale(1.0); opacity: 1; }
+                }
+                .loader-text {
+                    font-weight: 500;
+                    color: var(--text);
+                    letter-spacing: 0.2px;
+                }
+
+                /* Modal Styles */
+                .modal-overlay {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0, 0, 0, 0.8);
+                    backdrop-filter: blur(8px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                    padding: 1.5rem;
+                    animation: fadeIn 0.3s ease-out;
+                }
+                .modal-content {
+                    max-width: 450px;
+                    width: 100%;
+                    padding: 2.5rem;
+                    text-align: center;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .modal-header {
+                    margin-bottom: 1.5rem;
+                }
+                .warning-icon {
+                    margin-bottom: 1rem;
+                    filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.3));
+                }
+                .modal-content h2 { margin-bottom: 0.5rem; font-size: 1.75rem; }
+                .modal-content p { color: #94a3b8; line-height: 1.6; margin-bottom: 2rem; }
+                .modal-actions { display: flex; gap: 1rem; justify-content: center; }
+                .btn-secondary {
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 0.75rem;
+                    background: rgba(255, 255, 255, 0.05);
+                    color: white;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    cursor: pointer;
+                    font-weight: 600;
+                    transition: all 0.2s;
+                }
+                .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+                .btn-danger-filled {
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 0.75rem;
+                    background: #ef4444;
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    font-weight: 600;
+                    transition: all 0.2s;
+                    box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.4);
+                }
+                .btn-danger-filled:hover { background: #dc2626; transform: translateY(-2px); }
+
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
             ` }} />
         </div>
     );

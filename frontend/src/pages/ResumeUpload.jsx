@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { Upload, FileText, CheckCircle } from 'lucide-react';
+import { Upload, FileText, CheckCircle, X } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const ResumeUpload = () => {
@@ -10,6 +10,7 @@ const ResumeUpload = () => {
   const [progress, setProgress] = useState(0);
   const [parsedData, setParsedData] = useState(null);
   const [sessionId, setSessionId] = useState(null);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -23,6 +24,13 @@ const ResumeUpload = () => {
       setFile(selectedFile);
       setError('');
     }
+  };
+
+  const handleCancel = (e) => {
+    if (e) e.stopPropagation();
+    setFile(null);
+    setProgress(0);
+    setError('');
   };
 
   const handleUpload = async () => {
@@ -63,11 +71,34 @@ const ResumeUpload = () => {
             onChange={handleFileChange} 
             accept=".pdf,.docx"
           />
-          <label htmlFor="resume-file" style={{ cursor: 'pointer' }}>
+          <label htmlFor="resume-file" style={{ cursor: 'pointer', display: 'block' }}>
             <div style={{ background: 'rgba(99, 102, 241, 0.1)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 1.5rem' }}>
               <Upload size={32} color="var(--primary)" />
             </div>
-            <h3>{file ? file.name : 'Select or Drag & Drop'}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', position: 'relative' }}>
+              <h3 style={{ margin: 0 }}>{file ? file.name : 'Select or Drag & Drop'}</h3>
+              {file && !uploading && !parsedData && (
+                <button 
+                  onClick={handleCancel}
+                  style={{ 
+                    background: 'rgba(239, 68, 68, 0.1)', 
+                    border: 'none', 
+                    borderRadius: '50%', 
+                    padding: '4px', 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                  title="Remove file"
+                >
+                  <X size={16} color="var(--danger)" />
+                </button>
+              )}
+            </div>
             <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>PDF or DOCX (max 5MB)</p>
           </label>
 
@@ -135,16 +166,19 @@ const ResumeUpload = () => {
             <button 
               className="btn-primary" 
               style={{ width: '100%', marginTop: '1rem' }}
+              disabled={starting}
               onClick={async () => {
+                setStarting(true);
                 try {
                   const res = await api.post('/sessions/start', { useResume: true, totalQuestions: 5 });
                   navigate(`/interview/${res.data.data._id}`);
                 } catch (err) {
                   setError('Failed to start resume-based interview');
+                  setStarting(false);
                 }
               }}
             >
-              Start Interview Simulation
+              {starting ? <LoadingSpinner size={20} message={null} /> : 'Start Interview Simulation'}
             </button>
           </div>
         )}
