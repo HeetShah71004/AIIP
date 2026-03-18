@@ -29,8 +29,21 @@ const Navbar = () => {
   if (!user) return null;
 
   return (
-    <nav className="glass" style={{ margin: '1rem 2rem', padding: '0.75rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', fontSize: '1.25rem', color: 'var(--primary)', textDecoration: 'none' }}>
+    <nav className="glass" style={{ 
+      maxWidth: '1400px', 
+      margin: '1rem auto 0.5rem auto', 
+      padding: '0.875rem 2.5rem', 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center',
+      borderRadius: '1.5rem',
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      boxShadow: '0 15px 35px -5px rgba(0,0,0,0.5)',
+      background: 'rgba(15, 23, 42, 0.4)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)'
+    }}>
+      <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: '800', fontSize: '1.35rem', color: '#6366f1', textDecoration: 'none', letterSpacing: '-0.02em' }}>
         AI Interview Platform
       </Link>
       <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
@@ -139,8 +152,9 @@ const Navbar = () => {
           transition: all 0.2s ease !important;
         }
         .profile-dropdown-item:hover {
-          background: rgba(255, 255, 255, 0.05) !important;
+          background: rgba(99, 102, 241, 0.1) !important;
           padding-left: 1.25rem !important;
+          color: #6366f1 !important;
         }
         .profile-dropdown-item.danger:hover {
           background: rgba(239, 68, 68, 0.1) !important;
