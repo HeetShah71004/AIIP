@@ -25,13 +25,18 @@ AIIP is a modern, full-stack application designed to streamline the recruitment 
 ---
 
 ## 🗺️ MVP Roadmap (V1.0)
+_Weeks 1–2 | 15 tasks_
 
-| Phase | Frontend | Backend |
+| # | FRONTEND | BACKEND |
 | :--- | :--- | :--- |
-| **01** | **Login & Signup UI**<br>Email/password forms, validation, skeleton loading, responsive layouts. | **Express Server & MongoDB**<br>Modular routes, Mongoose schemas (User, Session, Question), middleware. |
-| **02** | **Protected Routes**<br>Route guards with React Router. Persistent sessions via localStorage & refresh tokens. | **JWT Authentication**<br>Auth endpoints, bcrypt hashing, access/refresh token pair, logout blacklist. |
-| **03** | **Dashboard UI**<br>Overview cards (sessions, scores), quick-start button, activity feed. | **Resume Upload API**<br>Multer storage (Disk/S3), file-type whitelist (PDF/DOCX), 5MB limit. |
-| **04** | **Resume Upload Page UI**<br>Drag-and-drop zone, upload progress bar, parsed preview panel. | **Resume Text Extraction**<br>pdf-parse + mammoth. Strip boilerplate, return structured skill/edu data. |
+| **01** | **Login & Signup UI**<br>Email/password forms, validation states, redirect on auth, skeleton loading. Responsive layout, error banners.<br>`UI` `Auth` | **Express Server & MongoDB**<br>Modular route structure, Mongoose schemas (User, Session, Question), dotenv config, error-handling middleware.<br>`DB` |
+| **02** | **Protected Routes**<br>JWT-aware route guards with React Router. Redirect unauthenticated users; persist session via localStorage + refresh token.<br>`Auth` | **JWT Authentication**<br>Register/login endpoints, bcrypt password hashing, access + refresh token pair, token blacklist on logout.<br>`Auth` `API` |
+| **03** | **Dashboard UI**<br>Overview cards: sessions completed, avg score, streak. Quick-start interview button. Recent activity feed.<br>`UI` | **Resume Upload API + Multer**<br>Multer disk/S3 storage, file-type whitelist (PDF/DOCX), 5 MB limit, signed URL response for frontend preview.<br>`API` |
+| **04** | **Resume Upload Page UI**<br>Drag-and-drop zone, file type/size validation, upload progress bar, parsed preview panel on success.<br>`UI` | **Resume Text Extraction**<br>pdf-parse + mammoth for DOCX. Strip boilerplate, return structured JSON: skills[], experience[], education[].<br>`AI API` |
+| **05** | **Mock Interview UI**<br>Chat-style Q&A; flow, question counter, timer display, submit answer action, loading indicator between AI turns.<br>`UI` `AI` | **Question Bank APIs**<br>CRUD for questions; filter by category, difficulty, company tag. Pagination + search. Seed script for 200+ starter questions.<br>`API DB` |
+| **06** | **AI Feedback Display**<br>Score cards per answer (clarity, depth, relevance), inline highlighted strengths/weaknesses, overall session score.<br>`UI` `AI` | **Interview Session APIs**<br>Create/end session, record answers array, calculate duration, link to resume and question set.<br>`API DB` |
+| **07** | **Basic Analytics UI**<br>Bar chart of scores per session, performance trend line, category breakdown table.<br>`UI` | **AI Evaluation Integration**<br>OpenAI/Claude call per answer: score 1-10 + feedback string. Retry with exponential backoff. Cache identical answers.<br>`AI API` |
+| **08** | | **Basic Analytics APIs**<br>Aggregate score history by user, per-category average, session frequency. Exposed as /analytics/summary endpoint.<br>`API DB` |
 
 ---
 

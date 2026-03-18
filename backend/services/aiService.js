@@ -118,3 +118,41 @@ export const generateQuestionsFromResume = async (resumeData, totalQuestions = 5
     "Where do you see yourself in five years?"
   ].slice(0, totalQuestions);
 };
+
+export const extractStructuredDataFromResume = async (text) => {
+  const prompt = `
+    Extract structured information from the following resume text. 
+    Analyze the text carefully to identify the candidate's professional title, primary technical stack, all technical skills, key projects, and education history.
+
+    Resume Text:
+    "${text}"
+
+    Provide the result in JSON format with exactly the following fields:
+    - developerTitle (string, e.g., "Full Stack Developer")
+    - primaryStack (string, e.g., "MERN Stack")
+    - skills (array of strings, e.g., ["JavaScript", "React", "Node.js"])
+    - projects (array of objects with "name" and "languages" array, e.g., [{"name": "E-commerce App", "languages": ["React", "Firebase"]}])
+    - education (array of objects with "degree" and "school", e.g., [{"degree": "B.Tech in CS", "school": "University of Tech"}])
+
+    IMPORTANT: Return ONLY the JSON object, no other text.
+  `;
+
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
+    try {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+      
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let responseText = response.text();
+      
+      const cleanedJson = responseText.replace(/```json|```/g, '').trim();
+      return JSON.parse(cleanedJson);
+    } catch (error) {
+      console.error('Gemini Resume Parsing Error:', error.message);
+      throw error; // Let controller handle fallback
+    }
+  }
+
+  throw new Error('AI Service Unavailable');
+};
