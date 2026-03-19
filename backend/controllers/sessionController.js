@@ -145,3 +145,29 @@ export const submitAnswer = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Delete a session
+export const deleteSession = async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+    
+    // Check if the session belongs to the user
+    if (session.user.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this session' });
+    }
+
+    // Delete associated questions
+    await Question.deleteMany({ session: session._id });
+    
+    // Delete session
+    await Session.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Session deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Trophy, Target, Zap, Play, ChevronRight } from 'lucide-react';
+import { Trophy, Target, Zap, Play, ChevronRight, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
 import {
@@ -11,6 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 
 const Dashboard = () => {
@@ -18,6 +26,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -29,19 +38,48 @@ const Dashboard = () => {
     };
   }, []);
 
+  const fetchSessions = async () => {
+    try {
+      const res = await api.get(`/analytics/summary?page=${currentPage}&limit=5`);
+      setSessions(res.data.data.sessionHistory);
+      setStats(res.data.data);
+      setTotalPages(res.data.data.totalPages);
+    } catch (err) {
+      console.error('Failed to fetch sessions');
+    }
+  };
+
   useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        const res = await api.get(`/analytics/summary?page=${currentPage}&limit=5`);
-        setSessions(res.data.data.sessionHistory);
-        setStats(res.data.data);
-        setTotalPages(res.data.data.totalPages);
-      } catch (err) {
-        console.error('Failed to fetch sessions');
-      }
-    };
     fetchSessions();
   }, [currentPage]);
+
+  const handleDeleteSession = async (sessionId, e) => {
+    e.stopPropagation();
+    setSessionToDelete(sessionId);
+  };
+
+  const confirmDelete = async () => {
+    if (!sessionToDelete) return;
+    try {
+      await api.delete(`/sessions/${sessionToDelete}`);
+      setSessionToDelete(null);
+      fetchSessions();
+    } catch (err) {
+      console.error('Failed to delete session');
+    }
+  };
+
+  const formatJobTitle = (title) => {
+    if (!title) return 'Interview Session';
+    let clean = title.replace(/\b(profile|summary|objective|india|i am a|i am an|i am|an experienced|experienced|passionate|dedicated|motivated)\b/gi, '').trim();
+    clean = clean.replace(/^[^\w\s]+/, '').trim();
+    if (clean) {
+      clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+      if (clean.length > 50) clean = clean.substring(0, 47) + '...';
+      return `${clean} Interview`;
+    }
+    return 'Interview Session';
+  };
 
   return (
     <div className="container max-w-7xl mx-auto px-4 py-8 space-y-8">
@@ -115,7 +153,9 @@ const Dashboard = () => {
                     >
                       <div className="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-primary to-primary/50 scale-y-0 group-hover:scale-y-100 transition-transform duration-500 origin-center" />
                       <div className="space-y-1">
-                        <p className="font-semibold group-hover:text-primary transition-colors">Interview Session</p>
+                        <p className="font-semibold group-hover:text-primary transition-colors line-clamp-1">
+                          {formatJobTitle(s.parsedData?.developerTitle)}
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           {new Date(s.completedAt || s.createdAt).toLocaleString(undefined, {
                             dateStyle: 'medium',
@@ -127,7 +167,15 @@ const Dashboard = () => {
                         <div className={`text-2xl font-bold ${s.score >= 7 ? 'text-green-600' : 'text-primary'}`}>
                           {(s.score * 10).toFixed(0)}%
                         </div>
-                        <div className="opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                        <div className="opacity-0 -translate-x-4 flex items-center gap-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-10 w-10 text-destructive hover:bg-destructive/10 hover:text-destructive z-20"
+                            onClick={(e) => handleDeleteSession(s._id, e)}
+                          >
+                            <Trash2 size={18} />
+                          </Button>
                           <div className="p-2 rounded-full bg-primary/10 text-primary">
                             <ChevronRight size={18} />
                           </div>
@@ -166,6 +214,25 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </section>
+
+      <Dialog open={!!sessionToDelete} onOpenChange={(open) => !open && setSessionToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Activity</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this activity? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSessionToDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -37,6 +37,7 @@ const MockInterview = () => {
     const [chatHistory, setChatHistory] = useState([]);
     const [timeLeft, setTimeLeft] = useState(1800);
     const [showSkipModal, setShowSkipModal] = useState(false);
+    const [showExitModal, setShowExitModal] = useState(false);
     const scrollAreaRef = useRef(null);
 
     useEffect(() => {
@@ -218,6 +219,34 @@ const MockInterview = () => {
         }
     };
 
+    const handleGoToDashboardClick = () => {
+        if (currentQuestionIndex >= questions.length) {
+            navigate('/');
+            return;
+        }
+        setShowExitModal(true);
+    };
+
+    const handleConfirmExit = async () => {
+        setShowExitModal(false);
+        setSubmitting(true);
+        try {
+            const remainingQuestions = questions.slice(currentQuestionIndex);
+            for (const q of remainingQuestions) {
+                await submitAnswer(sessionId, {
+                    questionId: q._id,
+                    answer: '__SKIPPED__'
+                });
+            }
+        } catch (error) {
+            console.error('Error skipping remaining questions:', error);
+            toast.error('Could not save all remaining questions');
+        } finally {
+            setSubmitting(false);
+            navigate('/');
+        }
+    };
+
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
@@ -232,7 +261,13 @@ const MockInterview = () => {
                 {/* Sidebar */}
                 <aside className="border-r border-border/50 bg-muted/20 flex flex-col h-full overflow-hidden">
                     <div className="p-6 border-b border-border/50 space-y-8">
-                        <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="w-full justify-start gap-2 hover:bg-background/80 transition-all font-medium">
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={handleGoToDashboardClick} 
+                            disabled={submitting}
+                            className="w-full justify-start gap-2 hover:bg-background/80 transition-all font-medium"
+                        >
                             <ChevronLeft size={16} /> Dashboard
                         </Button>
                         
@@ -398,6 +433,24 @@ const MockInterview = () => {
                     <DialogFooter className="grid grid-cols-2 gap-3 sm:justify-center mt-4">
                         <Button variant="outline" onClick={() => setShowSkipModal(false)}>Cancel</Button>
                         <Button variant="destructive" onClick={handleSkip}>Yes, Skip Case</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
+                <DialogContent className="max-w-[400px]">
+                    <DialogHeader className="space-y-3">
+                        <div className="mx-auto w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+                            <AlertCircle size={24} />
+                        </div>
+                        <DialogTitle className="text-center text-2xl">End Interview?</DialogTitle>
+                        <DialogDescription className="text-center text-balance leading-relaxed">
+                            Are you sure you want to exit? All remaining questions will be skipped, and your mock interview will be over.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="grid grid-cols-2 gap-3 sm:justify-center mt-4">
+                        <Button variant="outline" onClick={() => setShowExitModal(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleConfirmExit}>Yes, End Interview</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

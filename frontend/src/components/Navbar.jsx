@@ -31,11 +31,11 @@ const Navbar = () => {
   return (
     <nav className="sticky top-6 z-50 mx-auto max-w-7xl px-4 pointer-events-none">
       <div className="flex items-center justify-between rounded-2xl glass border-none px-6 py-3 shadow-xl pointer-events-auto">
-        <Link to="/" className="flex items-center gap-3 text-xl font-bold tracking-tight text-primary transition-all hover:scale-[1.02] active:scale-[0.98]">
+        <Link to="/" className="flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]">
+          <span className="text-3xl font-black tracking-tighter text-teal-600 font-outfit">Interv</span>
           <div className="bg-primary px-2.5 py-1 rounded-xl text-primary-foreground shadow-md transform -rotate-3">
-            <span className="text-lg">AI</span>
+            <span className="text-xl font-bold font-outfit">AI</span>
           </div>
-          <span className="font-outfit text-2xl tracking-tight">Interview Platform</span>
         </Link>
 
         <div className="flex items-center gap-6">

@@ -15,7 +15,7 @@ export const getAnalyticsSummary = async (req, res) => {
       .sort({ completedAt: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .select('score createdAt completedAt');
+      .select('score createdAt completedAt parsedData');
 
     // 2. Average score per category (fixed aggregation with QuestionBank join)
     const categoryStats = await Question.aggregate([
