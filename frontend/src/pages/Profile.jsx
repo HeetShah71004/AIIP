@@ -1,6 +1,21 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { User, Mail, Calendar, LogOut } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -13,68 +28,53 @@ const Profile = () => {
   };
 
   return (
-    <div className="container" style={{ marginTop: '3rem' }}>
-      <div className="glass" style={{ padding: '3rem', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ 
-          width: '120px', 
-          height: '120px', 
-          borderRadius: '50%', 
-          backgroundColor: 'var(--card-bg)', 
-          margin: '0 auto 2rem', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          border: '2px solid var(--primary)',
-          overflow: 'hidden'
-        }}>
-          {user.avatar ? (
-            <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <User size={60} color="var(--primary)" />
-          )}
-        </div>
+    <div className="container max-w-2xl mx-auto px-4 py-12">
+      <Card className="border-border/50 shadow-lg">
+        <CardHeader className="text-center pb-2">
+          <div className="flex justify-center mb-4">
+            <Avatar className="h-32 w-32 border-2 border-primary ring-4 ring-primary/10">
+              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarFallback className="text-4xl">
+                {user.name?.charAt(0).toUpperCase() || <User size={48} />}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          <CardTitle className="text-3xl font-bold tracking-tight">{user.name}</CardTitle>
+          <CardDescription className="text-lg">User Profile</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6 pt-6">
+          <div className="grid gap-4">
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-border/50 transition-colors hover:bg-muted/50">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <Mail size={20} />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email Address</p>
+                <p className="text-lg font-medium">{user.email}</p>
+              </div>
+            </div>
 
-        <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{user.name}</h1>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem' }}>User Profile</p>
-
-        <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '0.75rem' }}>
-            <Mail size={20} color="var(--primary)" />
-            <div>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Email Address</p>
-              <p style={{ fontSize: '1.1rem' }}>{user.email}</p>
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-border/50 transition-colors hover:bg-muted/50">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <Calendar size={20} />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Joined On</p>
+                <p className="text-lg font-medium">{formatDate(user.createdAt)}</p>
+              </div>
             </div>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '0.75rem' }}>
-            <Calendar size={20} color="var(--primary)" />
-            <div>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Joined On</p>
-              <p style={{ fontSize: '1.1rem' }}>{formatDate(user.createdAt)}</p>
-            </div>
-          </div>
-        </div>
-
-        <button 
-          onClick={logout}
-          className="btn-danger" 
-          style={{ 
-            marginTop: '3rem', 
-            width: '100%', 
-            padding: '1rem', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            gap: '0.5rem',
-            backgroundColor: 'transparent',
-            border: '1px solid var(--danger)',
-            color: 'var(--danger)',
-            borderRadius: '0.75rem'
-          }}
-        >
-          <LogOut size={20} /> Sign Out
-        </button>
-      </div>
+        </CardContent>
+        <CardFooter className="pt-6">
+          <Button 
+            variant="destructive" 
+            className="w-full h-12 text-lg gap-2 shadow-sm"
+            onClick={logout}
+          >
+            <LogOut size={20} /> Sign Out
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 };

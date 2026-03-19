@@ -1,166 +1,91 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, Upload, BarChart3, User as UserIcon } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
 
   const handleLogout = async () => {
-    setDropdownOpen(false);
     await logout();
     navigate('/login');
   };
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   if (!user) return null;
 
   return (
-    <nav className="glass" style={{ 
-      maxWidth: '1400px', 
-      margin: '1rem auto 0.5rem auto', 
-      padding: '0.875rem 2.5rem', 
-      display: 'flex', 
-      justifyContent: 'space-between', 
-      alignItems: 'center',
-      borderRadius: '1.5rem',
-      border: '1px solid rgba(255, 255, 255, 0.08)',
-      boxShadow: '0 15px 35px -5px rgba(0,0,0,0.5)',
-      background: 'rgba(15, 23, 42, 0.4)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)'
-    }}>
-      <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: '800', fontSize: '1.35rem', color: '#6366f1', textDecoration: 'none', letterSpacing: '-0.02em' }}>
-        AI Interview Platform
-      </Link>
-      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-        <Link to="/upload" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text)', textDecoration: 'none' }}>
-          <Upload size={20} /> Upload Resume
-        </Link>
-        <Link to="/analytics" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text)', textDecoration: 'none' }}>
-          <BarChart3 size={20} /> Analytics
+    <nav className="sticky top-6 z-50 mx-auto max-w-7xl px-4 pointer-events-none">
+      <div className="flex items-center justify-between rounded-2xl glass border-none px-6 py-3 shadow-xl pointer-events-auto">
+        <Link to="/" className="flex items-center gap-3 text-xl font-bold tracking-tight text-primary transition-all hover:scale-[1.02] active:scale-[0.98]">
+          <div className="bg-primary px-2.5 py-1 rounded-xl text-primary-foreground shadow-md transform -rotate-3">
+            <span className="text-lg">AI</span>
+          </div>
+          <span className="font-outfit text-2xl tracking-tight">Interview Platform</span>
         </Link>
 
-        {/* Profile badge with dropdown — positioned last */}
-        <div className="profile-dropdown-wrapper" ref={dropdownRef}>
-          <button
-            className="profile-badge standalone"
-            onClick={() => setDropdownOpen((prev) => !prev)}
-            title={user.name || user.email}
-          >
-            <div className="avatar-circle">
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.name || 'User'} referrerPolicy="no-referrer" />
-              ) : (
-                (user.name || user.email) ? (
-                  <span>{(user.name || user.email).charAt(0).toUpperCase()}</span>
-                ) : (
-                  <UserIcon size={20} />
-                )
-              )}
-            </div>
-          </button>
+        <div className="flex items-center gap-6">
+          <Link to="/upload" className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+            <Upload size={18} />
+            <span className="hidden sm:inline">Upload Resume</span>
+          </Link>
+          <Link to="/analytics" className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+            <BarChart3 size={18} />
+            <span className="hidden sm:inline">Analytics</span>
+          </Link>
 
-          {dropdownOpen && (
-            <div className="profile-dropdown">
-              <Link
-                to="/profile"
-                className="profile-dropdown-item"
-                onClick={() => setDropdownOpen(false)}
-              >
-                <UserIcon size={16} /> View Profile
-              </Link>
-              <div className="profile-dropdown-divider" />
-              <button
-                className="profile-dropdown-item danger"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={user.avatar} alt={user.name || 'User'} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {(user.name || user.email)?.charAt(0).toUpperCase() || <UserIcon size={18} />}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal border-b pb-2 mb-1">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user.name || 'User'}</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link to="/profile" className="cursor-pointer w-full flex items-center">
+                  <UserIcon className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive cursor-pointer"
                 onClick={handleLogout}
               >
-                <LogOut size={16} /> Sign Out
-              </button>
-            </div>
-          )}
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-      <style dangerouslySetInnerHTML={{ __html: `
-        .nav-link {
-          position: relative;
-          padding: 0.5rem 0;
-          transition: color 0.3s ease;
-        }
-        .nav-link::after {
-          content: '';
-          position: absolute;
-          bottom: 0;
-          left: 50%;
-          width: 0;
-          height: 2px;
-          background: var(--primary);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          transform: translateX(-50%);
-          border-radius: 2px;
-        }
-        .nav-link:hover::after {
-          width: 100%;
-        }
-        .nav-link:hover {
-          color: var(--primary) !important;
-        }
-
-        .avatar-circle {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
-        }
-        .profile-badge:hover .avatar-circle {
-          transform: scale(1.05);
-          box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
-        }
-        .profile-badge:active .avatar-circle {
-          transform: scale(0.95);
-        }
-
-        .profile-dropdown {
-          animation: dropdownFade 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-          background: rgba(30, 41, 59, 0.9) !important;
-          backdrop-filter: blur(16px) !important;
-          border: 1px solid rgba(255, 255, 255, 0.1) !important;
-          border-radius: 1rem !important;
-          padding: 0.5rem !important;
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3) !important;
-        }
-
-        @keyframes dropdownFade {
-          from { opacity: 0; transform: translateY(-10px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .profile-dropdown-item {
-          border-radius: 0.75rem !important;
-          margin: 0.25rem 0;
-          transition: all 0.2s ease !important;
-        }
-        .profile-dropdown-item:hover {
-          background: rgba(99, 102, 241, 0.1) !important;
-          padding-left: 1.25rem !important;
-          color: #6366f1 !important;
-        }
-        .profile-dropdown-item.danger:hover {
-          background: rgba(239, 68, 68, 0.1) !important;
-          color: #ef4444 !important;
-        }
-      ` }} />
     </nav>
   );
 };

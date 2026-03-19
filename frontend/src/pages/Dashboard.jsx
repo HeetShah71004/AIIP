@@ -1,210 +1,171 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Trophy, Target, Zap, Play } from 'lucide-react';
+import { Trophy, Target, Zap, Play, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 
 const Dashboard = () => {
   const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Hide scrollbar for the home page only
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchSessions = async () => {
       try {
-        const res = await api.get('/analytics/summary');
+        const res = await api.get(`/analytics/summary?page=${currentPage}&limit=5`);
         setSessions(res.data.data.sessionHistory);
         setStats(res.data.data);
+        setTotalPages(res.data.data.totalPages);
       } catch (err) {
         console.error('Failed to fetch sessions');
       }
     };
     fetchSessions();
-  }, []);
+  }, [currentPage]);
 
   return (
-    <div className="container" style={{ paddingBottom: '4rem' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '2rem 0' }}>
-        <div>
-          <h1>Welcome, {user?.name}</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Ready for your next interview?</p>
+    <div className="container max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">Welcome, {user?.name}</h1>
+          <p className="text-muted-foreground text-lg">Ready for your next interview?</p>
         </div>
-        <button className="btn-primary" onClick={() => navigate('/upload')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Play size={20} /> Quick Start
-        </button>
+        <Button onClick={() => navigate('/upload')} className="gap-2 shrink-0">
+          <Play size={20} fill="currentColor" /> Quick Start
+        </Button>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-        <div className="glass stat-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(99, 102, 241, 0.2)', padding: '0.75rem', borderRadius: '0.75rem', color: 'var(--primary)' }}>
-            <Trophy size={24} />
-          </div>
-          <div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Sessions Completed</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats?.totalSessions || 0}</div>
-          </div>
-        </div>
-        <div className="glass stat-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(16, 185, 129, 0.2)', padding: '0.75rem', borderRadius: '0.75rem', color: 'var(--success)' }}>
-            <Target size={24} />
-          </div>
-          <div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Average Score</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(stats?.avgOverallScore * 10).toFixed(0) || 0}%</div>
-          </div>
-        </div>
-        <div className="glass stat-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '0.75rem', borderRadius: '0.75rem', color: 'var(--danger)' }}>
-            <Zap size={24} />
-          </div>
-          <div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Current Streak</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats?.streak || 0} Days</div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20 border-border/50">
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="p-3 rounded-xl bg-primary/10 text-primary">
+              <Trophy size={24} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Sessions Completed</p>
+              <h3 className="text-3xl font-bold tracking-tight">{stats?.totalSessions || 0}</h3>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20 border-border/50">
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="p-3 rounded-xl bg-green-500/10 text-green-600">
+              <Target size={24} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Average Score</p>
+              <h3 className="text-3xl font-bold tracking-tight">{(stats?.avgOverallScore * 10).toFixed(0) || 0}%</h3>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20 border-border/50">
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="p-3 rounded-xl bg-red-500/10 text-red-600">
+              <Zap size={24} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Current Streak</p>
+              <h3 className="text-3xl font-bold tracking-tight">{stats?.streak || 0} Days</h3>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <section>
-        <h2 style={{ marginBottom: '1.5rem' }}>Recent Activity</h2>
-        <div className="glass recent-activity-container" style={{ padding: '0 1rem' }}>
-          {sessions.length === 0 ? (
-            <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No recent activity. Start an interview!</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {sessions.map(s => (
-                <div 
-                  key={s._id} 
-                  onClick={() => navigate(`/feedback/${s._id}`)}
-                  className="activity-item"
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    padding: '1.25rem 1rem', 
-                    borderBottom: '1px solid var(--border)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: '600' }}>Interview Session</div>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{new Date(s.completedAt || s.createdAt).toLocaleString()}</div>
-                  </div>
-                  <div style={{ fontWeight: 'bold', color: s.score >= 7 ? 'var(--success)' : 'var(--primary)', fontSize: '1.125rem' }}>
-                    {(s.score * 10).toFixed(0)}%
-                  </div>
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold tracking-tight">Recent Activity</h2>
+        <Card className="border-border/50">
+          <CardContent className="p-0">
+            {sessions.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-muted-foreground text-lg">No recent activity. Start an interview!</p>
+                <Button variant="link" onClick={() => navigate('/upload')} className="mt-2">
+                  Upload your resume to begin
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="divide-y divide-border">
+                  {sessions.map((s) => (
+                    <div
+                      key={s._id}
+                      onClick={() => navigate(`/feedback/${s._id}`)}
+                      className="flex justify-between items-center p-6 hover:bg-card hover:shadow-2xl hover:shadow-primary/10 cursor-pointer transition-all duration-300 group relative overflow-hidden hover:-translate-y-1 z-10"
+                    >
+                      <div className="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-primary to-primary/50 scale-y-0 group-hover:scale-y-100 transition-transform duration-500 origin-center" />
+                      <div className="space-y-1">
+                        <p className="font-semibold group-hover:text-primary transition-colors">Interview Session</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(s.completedAt || s.createdAt).toLocaleString(undefined, {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className={`text-2xl font-bold ${s.score >= 7 ? 'text-green-600' : 'text-primary'}`}>
+                          {(s.score * 10).toFixed(0)}%
+                        </div>
+                        <div className="opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                          <div className="p-2 rounded-full bg-primary/10 text-primary">
+                            <ChevronRight size={18} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) }
-        </div>
+                {sessions.length > 0 && (
+                  <div className="flex items-center justify-between px-6 py-4 bg-muted/20 border-t border-border">
+                    <p className="text-sm text-muted-foreground">
+                      Page {currentPage} of {totalPages}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
       </section>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .stat-card {
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-          border: 1px solid transparent;
-          cursor: default;
-        }
-        .stat-card:hover {
-          background: rgba(255, 255, 255, 0.05);
-          transform: translateY(-5px);
-          border-color: rgba(99, 102, 241, 0.2);
-          box-shadow: 
-            0 20px 40px -12px rgba(0, 0, 0, 0.4),
-            0 0 0 1px rgba(99, 102, 241, 0.1);
-          backdrop-filter: blur(16px);
-        }
-        .stat-card:hover svg {
-          transform: scale(1.1) rotate(5deg);
-        }
-        .stat-card svg {
-          transition: transform 0.3s ease;
-        }
-        
-        .recent-activity-container {
-          overflow: hidden;
-        }
-
-        .activity-item {
-          border-radius: 14px;
-          margin: 0.35rem 0;
-          position: relative;
-          overflow: hidden;
-          border: 1px solid transparent;
-          transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Left accent bar that slides in */
-        .activity-item::before {
-          content: '';
-          position: absolute;
-          left: 0;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 3px;
-          height: 0;
-          border-radius: 0 4px 4px 0;
-          background: linear-gradient(180deg, #6366f1, #8b5cf6, #a78bfa);
-          transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Animated shimmer sweep */
-        .activity-item::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 14px;
-          background: linear-gradient(
-            105deg,
-            transparent 30%,
-            rgba(99, 102, 241, 0.06) 45%,
-            rgba(139, 92, 246, 0.1) 50%,
-            rgba(99, 102, 241, 0.06) 55%,
-            transparent 70%
-          );
-          background-size: 200% 100%;
-          background-position: 200% 0;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-          pointer-events: none;
-        }
-
-        .activity-item:hover {
-          background: rgba(99, 102, 241, 0.06);
-          border-color: rgba(99, 102, 241, 0.2);
-          transform: translateY(-3px) scale(1.01);
-          box-shadow: 
-            0 8px 32px rgba(99, 102, 241, 0.15),
-            0 0 0 1px rgba(99, 102, 241, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.06);
-          backdrop-filter: blur(12px);
-        }
-
-        .activity-item:hover::before {
-          height: 60%;
-        }
-
-        .activity-item:hover::after {
-          opacity: 1;
-          animation: shimmerSweep 1.5s ease forwards;
-        }
-
-        @keyframes shimmerSweep {
-          from { background-position: 200% 0; }
-          to { background-position: -200% 0; }
-        }
-
-        .activity-item:active {
-          transform: translateY(-1px) scale(1.005);
-          box-shadow: 0 4px 16px rgba(99, 102, 241, 0.1);
-        }
-
-        .activity-item:last-child {
-          border-bottom: none !important;
-        }
-      ` }} />
     </div>
   );
 };
