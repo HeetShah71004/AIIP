@@ -163,23 +163,24 @@ const Dashboard = () => {
                           })}
                         </p>
                       </div>
-                      <div className="flex items-center gap-6">
-                        <div className={`text-2xl font-bold ${s.score >= 7 ? 'text-green-600' : 'text-primary'}`}>
-                          {(s.score * 10).toFixed(0)}%
+                      <div className="flex items-center gap-4">
+                        {/* Score Circular Progress */}
+                        <div className="relative flex items-center justify-center w-14 h-14 group-hover:scale-110 transition-transform duration-300">
+                          <svg className="transform -rotate-90 w-14 h-14">
+                            <circle cx="28" cy="28" r="20" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-muted/20" />
+                            <circle 
+                              cx="28" cy="28" r="20" fill="transparent" stroke="currentColor" strokeWidth="4" 
+                              strokeDasharray="125.6" 
+                              strokeDashoffset={125.6 - ((s.score * 10) / 100) * 125.6} 
+                              className={`transition-all duration-1000 ease-out ${s.score >= 8 ? 'text-green-500' : s.score >= 5 ? 'text-orange-500' : 'text-red-500'}`} 
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                          <span className={`absolute text-sm font-bold ${s.score >= 8 ? 'text-green-600' : s.score >= 5 ? 'text-orange-600' : 'text-red-600'}`}>
+                            {(s.score * 10).toFixed(0)}%
+                          </span>
                         </div>
-                        <div className="opacity-0 -translate-x-4 flex items-center gap-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-10 w-10 text-destructive hover:bg-destructive/10 hover:text-destructive z-20"
-                            onClick={(e) => handleDeleteSession(s._id, e)}
-                          >
-                            <Trash2 size={18} />
-                          </Button>
-                          <div className="p-2 rounded-full bg-primary/10 text-primary">
-                            <ChevronRight size={18} />
-                          </div>
-                        </div>
+
                       </div>
                     </div>
                   ))}

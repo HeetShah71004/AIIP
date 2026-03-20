@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { Upload, FileText, CheckCircle, X, FileUp } from 'lucide-react';
+import { Upload, FileText, CheckCircle, X, FileUp, Loader2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Button } from "@/components/ui/button"
 import {
@@ -26,6 +26,17 @@ const ResumeUpload = () => {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!parsedData) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [parsedData]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -121,8 +132,15 @@ const ResumeUpload = () => {
 
             {uploading && (
               <div className="mt-8 space-y-3">
-                <Progress value={progress} className="h-2" />
-                <p className="text-sm font-medium text-muted-foreground">{progress}% Uploaded</p>
+                <Progress value={progress} className={progress === 100 ? "h-2 bg-primary/20 animate-pulse" : "h-2"} />
+                {progress < 100 ? (
+                  <p className="text-sm font-medium text-muted-foreground">{progress}% Uploaded</p>
+                ) : (
+                  <div className="flex items-center justify-center gap-2 text-sm font-bold text-primary">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Analyzing Resume Structure...
+                  </div>
+                )}
               </div>
             )}
 

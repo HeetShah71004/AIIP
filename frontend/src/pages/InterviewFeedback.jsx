@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Award, CheckCircle, XCircle, Lightbulb, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star } from 'lucide-react';
+import { Award, CheckCircle, XCircle, Lightbulb, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, Trash2 } from 'lucide-react';
 import { getSession } from '../api/interviewApi';
+import api from '../api/client';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Button } from "@/components/ui/button"
@@ -22,6 +23,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Separator } from "@/components/ui/separator"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
 const InterviewFeedback = () => {
@@ -30,6 +39,7 @@ const InterviewFeedback = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -65,31 +75,67 @@ const InterviewFeedback = () => {
         return "bg-destructive/10";
     };
 
+    const formatJobTitle = (title) => {
+        if (!title) return 'Interview Performance';
+        let clean = title.replace(/\b(profile|summary|objective|india|i am a|i am an|i am|an experienced|experienced|passionate|dedicated|motivated)\b/gi, '').trim();
+        clean = clean.replace(/^[^\w\s]+/, '').trim();
+        if (clean) {
+            clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+            if (clean.length > 50) clean = clean.substring(0, 47) + '...';
+            return `${clean} Interview Performance`;
+        }
+        return 'Interview Performance';
+    };
+
     const currentQ = questions[currentSlide];
+
+    const confirmDelete = async () => {
+        try {
+            await api.delete(`/sessions/${sessionId}`);
+            toast.success('Session deleted successfully');
+            navigate('/');
+            setIsDeleteDialogOpen(false);
+        } catch (err) {
+            toast.error('Failed to delete session');
+        }
+    };
 
     return (
         <div className="container max-w-4xl mx-auto px-4 py-8 space-y-8">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="gap-2 -ml-2 text-muted-foreground hover:text-foreground">
-                <ChevronLeft size={16} /> Back to Dashboard
-            </Button>
+            <div className="flex justify-between items-center mb-[-0.5rem]">
+                <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="gap-2 -ml-2 text-muted-foreground hover:text-foreground">
+                    <ChevronLeft size={16} /> Back to Dashboard
+                </Button>
+                
+                <Button variant="ghost" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 size={16} /> Delete Interview
+                </Button>
+            </div>
 
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 p-8 rounded-2xl bg-muted/30 border border-border/50 shadow-sm">
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-bold tracking-tight">Interview Performance</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">{formatJobTitle(session.parsedData?.developerTitle)}</h1>
                     <p className="text-muted-foreground">Session held on {new Date(session.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>
                 </div>
-                <div className="flex items-center gap-4 bg-background/60 p-4 rounded-2xl border border-border/40 shadow-inner">
-                    <div className="text-right">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Overall Score</p>
-                        <div className="flex items-baseline gap-1">
-                            <span className={cn("text-4xl font-black", session.score >= 7 ? "text-green-600" : "text-primary")}>
-                                {session.score.toFixed(1)}
-                            </span>
-                            <span className="text-muted-foreground font-medium">/10</span>
-                        </div>
+                <div className="flex items-center gap-4 bg-background/60 p-3 pr-6 rounded-2xl border border-border/40 shadow-inner">
+                    <div className="relative flex items-center justify-center w-16 h-16">
+                        <svg className="transform -rotate-90 w-16 h-16">
+                            <circle cx="32" cy="32" r="24" fill="transparent" stroke="currentColor" strokeWidth="5" className="text-muted/20" />
+                            <circle 
+                                cx="32" cy="32" r="24" fill="transparent" stroke="currentColor" strokeWidth="5" 
+                                strokeDasharray="150.8" 
+                                strokeDashoffset={150.8 - ((session.score * 10) / 100) * 150.8} 
+                                className={cn("transition-all duration-1000 ease-out", session.score >= 8 ? "text-green-500" : session.score >= 5 ? "text-orange-500" : "text-red-500")} 
+                                strokeLinecap="round"
+                            />
+                        </svg>
+                        <span className={cn("absolute text-lg font-black", session.score >= 8 ? "text-green-600" : session.score >= 5 ? "text-orange-600" : "text-red-600")}>
+                            {(session.score * 10).toFixed(0)}%
+                        </span>
                     </div>
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center", session.score >= 7 ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary")}>
-                        <Star size={24} fill="currentColor" />
+                    <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Overall Score</p>
+                        <p className="text-sm font-medium text-foreground">{session.score.toFixed(1)} out of 10</p>
                     </div>
                 </div>
             </header>
@@ -203,6 +249,25 @@ const InterviewFeedback = () => {
                     New Interview Session
                 </Button>
             </div>
+
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Interview Session</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this interview session? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={confirmDelete}>
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

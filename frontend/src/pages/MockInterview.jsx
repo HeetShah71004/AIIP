@@ -38,6 +38,7 @@ const MockInterview = () => {
     const [timeLeft, setTimeLeft] = useState(1800);
     const [showSkipModal, setShowSkipModal] = useState(false);
     const [showExitModal, setShowExitModal] = useState(false);
+    const [selectedPastQuestion, setSelectedPastQuestion] = useState(null);
     const scrollAreaRef = useRef(null);
 
     useEffect(() => {
@@ -57,25 +58,30 @@ const MockInterview = () => {
                     }]);
                 } else {
                     setQuestions(sessionData.data.questions);
-                    const history = [];
                     const completedCount = sessionData.data.session.completedQuestions;
                     const allQuestions = sessionData.data.questions;
                     
-                    for (let i = 0; i <= completedCount && i < allQuestions.length; i++) {
-                        const q = allQuestions[i];
-                        history.push({ type: 'ai', text: q.text, timestamp: q.createdAt, isQuestion: true });
-                        
-                        if (q.answer) {
-                            const displayText = q.answer === '__SKIPPED__' ? '[Question Skipped]' : q.answer;
-                            history.push({ type: 'user', text: displayText, timestamp: q.createdAt });
-                            if (q.feedback) {
-                                history.push({ type: 'ai', text: `Feedback: ${q.feedback.analysis}`, timestamp: q.createdAt, isFeedback: true, score: q.feedback.score });
-                            }
+                    let history = [];
+                    
+                    if (completedCount === 0) {
+                        history = [{ type: 'ai', text: allQuestions[0].text, timestamp: allQuestions[0].createdAt, isQuestion: true }];
+                    } else if (completedCount < allQuestions.length) {
+                        const prevQ = allQuestions[completedCount - 1];
+                        history.push({ type: 'ai', text: prevQ.text, timestamp: prevQ.createdAt, isQuestion: true });
+                        history.push({ type: 'user', text: prevQ.answer === '__SKIPPED__' ? '[Question Skipped]' : prevQ.answer, timestamp: prevQ.createdAt });
+                        if (prevQ.feedback) {
+                            history.push({ type: 'ai', text: prevQ.feedback.analysis, timestamp: prevQ.createdAt, isFeedback: true, score: prevQ.feedback.score });
                         }
-                    }
-
-                    if (completedCount >= sessionData.data.session.totalQuestions) {
-                        history.push({
+                        const curQ = allQuestions[completedCount];
+                        history.push({ type: 'ai', text: curQ.text, timestamp: curQ.createdAt, isQuestion: true });
+                    } else {
+                         const prevQ = allQuestions[allQuestions.length - 1];
+                         history.push({ type: 'ai', text: prevQ.text, timestamp: prevQ.createdAt, isQuestion: true });
+                         history.push({ type: 'user', text: prevQ.answer === '__SKIPPED__' ? '[Question Skipped]' : prevQ.answer, timestamp: prevQ.createdAt });
+                         if (prevQ.feedback) {
+                              history.push({ type: 'ai', text: prevQ.feedback.analysis, timestamp: prevQ.createdAt, isFeedback: true, score: prevQ.feedback.score });
+                         }
+                         history.push({
                             type: 'ai',
                             text: "You've completed this interview session! You can view your full report in the feedback page.",
                             timestamp: new Date(),
@@ -114,8 +120,11 @@ const MockInterview = () => {
     const handleSkip = async () => {
         setShowSkipModal(false);
         const currentQuestion = questions[currentQuestionIndex];
+        const questionMessage = { type: 'ai', text: currentQuestion.text, timestamp: currentQuestion.createdAt || new Date(), isQuestion: true };
         const userMessage = { type: 'user', text: '[Question Skipped]', timestamp: new Date() };
-        setChatHistory([...chatHistory, userMessage]);
+        
+        // Reset chat to just current Q and skipped answer
+        setChatHistory([questionMessage, userMessage]);
         setSubmitting(true);
 
         try {
@@ -146,10 +155,10 @@ const MockInterview = () => {
                     timestamp: new Date(),
                     isQuestion: true
                 };
-                setChatHistory(prev => [...prev, feedbackMessage, nextQuestionMessage]);
+                setChatHistory([questionMessage, userMessage, feedbackMessage, nextQuestionMessage]);
                 setCurrentQuestionIndex(nextIndex);
             } else {
-                setChatHistory(prev => [...prev, feedbackMessage, {
+                setChatHistory([questionMessage, userMessage, feedbackMessage, {
                     type: 'ai',
                     text: "That was the last question! You've completed the interview session. You can view your full report in the feedback page.",
                     timestamp: new Date(),
@@ -168,8 +177,11 @@ const MockInterview = () => {
         if (!answer.trim()) return;
 
         const currentQuestion = questions[currentQuestionIndex];
+        const questionMessage = { type: 'ai', text: currentQuestion.text, timestamp: currentQuestion.createdAt || new Date(), isQuestion: true };
         const userMessage = { type: 'user', text: answer, timestamp: new Date() };
-        setChatHistory([...chatHistory, userMessage]);
+        
+        // Reset chat to just current Q and user's answer
+        setChatHistory([questionMessage, userMessage]);
         setSubmitting(true);
         const submittedAnswer = answer;
         setAnswer('');
@@ -202,10 +214,10 @@ const MockInterview = () => {
                     timestamp: new Date(),
                     isQuestion: true
                 };
-                setChatHistory(prev => [...prev, feedbackMessage, nextQuestionMessage]);
+                setChatHistory([questionMessage, userMessage, feedbackMessage, nextQuestionMessage]);
                 setCurrentQuestionIndex(nextIndex);
             } else {
-                setChatHistory(prev => [...prev, feedbackMessage, {
+                setChatHistory([questionMessage, userMessage, feedbackMessage, {
                     type: 'ai',
                     text: "That was the last question! You've completed the interview session. You can view your full report in the feedback page.",
                     timestamp: new Date(),
@@ -251,6 +263,18 @@ const MockInterview = () => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const getScoreBorderColor = (score) => {
+        if (score >= 7) return "border-l-green-500 bg-green-500/[0.03]";
+        if (score >= 4) return "border-l-amber-500 bg-amber-500/[0.03]";
+        return "border-l-destructive bg-destructive/[0.03]";
+    };
+
+    const getScoreBadgeClass = (score) => {
+        if (score >= 7) return "bg-green-500/10 text-green-600 border-green-500/20";
+        if (score >= 4) return "bg-amber-500/10 text-amber-600 border-amber-500/20";
+        return "bg-destructive/10 text-destructive border-destructive/20";
     };
 
     if (loading) return <LoadingSpinner fullPage message="Preparing your interview session..." />;
@@ -303,11 +327,12 @@ const MockInterview = () => {
                                 {questions.map((q, i) => (
                                     <div 
                                         key={i} 
+                                        onClick={() => i < currentQuestionIndex ? setSelectedPastQuestion(i) : null}
                                         className={cn(
                                             "w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm ring-offset-background",
                                             i === currentQuestionIndex ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110 z-10" :
                                             i < currentQuestionIndex ? (
-                                                questions[i].answer === '__SKIPPED__' ? "bg-red-500 text-white" : "bg-green-500 text-white"
+                                                `cursor-pointer hover:opacity-80 hover:scale-110 ${questions[i].answer === '__SKIPPED__' ? "bg-red-500 text-white" : "bg-green-500 text-white"}`
                                             ) : "bg-muted/50 text-muted-foreground border border-border/50"
                                         )}
                                     >
@@ -345,14 +370,14 @@ const MockInterview = () => {
                                     <Card className={cn(
                                         "max-w-[80%] border-border/40 shadow-sm transition-all animate-in fade-in slide-in-from-bottom-2 duration-500",
                                         msg.type === 'user' ? "bg-primary text-primary-foreground border-none ring-4 ring-primary/5" : "bg-card/90",
-                                        msg.isFeedback && "border-l-4 border-l-green-500 bg-green-500/[0.03]",
+                                        msg.isFeedback && `border-l-4 ${getScoreBorderColor(msg.score)}`,
                                         msg.isQuestion && "border-primary/30 bg-primary/[0.03]"
                                     )}>
                                         <CardContent className="p-5 space-y-4">
                                             <p className="leading-relaxed whitespace-pre-wrap text-[15px]">{msg.text}</p>
                                             
                                             {msg.isFeedback && (
-                                                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 font-bold px-3 py-1">
+                                                <Badge variant="outline" className={cn("font-bold px-3 py-1", getScoreBadgeClass(msg.score))}>
                                                     Score: {msg.score}/10
                                                 </Badge>
                                             )}
@@ -452,6 +477,46 @@ const MockInterview = () => {
                         <Button variant="outline" onClick={() => setShowExitModal(false)}>Cancel</Button>
                         <Button variant="destructive" onClick={handleConfirmExit}>Yes, End Interview</Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={selectedPastQuestion !== null} onOpenChange={(open) => !open && setSelectedPastQuestion(null)}>
+                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl border-b border-border/50 pb-4">
+                            Review Question {selectedPastQuestion !== null ? selectedPastQuestion + 1 : ''}
+                        </DialogTitle>
+                    </DialogHeader>
+                    {selectedPastQuestion !== null && (
+                        <div className="space-y-6 pt-4">
+                            <div className="space-y-2">
+                                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest pl-1">Question</h4>
+                                <p className="text-foreground leading-relaxed font-semibold bg-muted/20 p-4 rounded-xl border border-border/40">
+                                    {questions[selectedPastQuestion].text}
+                                </p>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest pl-1">Your Answer</h4>
+                                <div className="p-4 bg-primary/5 rounded-xl border border-primary/20 text-sm font-medium italic text-primary/90">
+                                    {questions[selectedPastQuestion].answer === '__SKIPPED__' ? '[Question Skipped]' : questions[selectedPastQuestion].answer}
+                                </div>
+                            </div>
+
+                            {questions[selectedPastQuestion].feedback && (
+                                <div className="space-y-3 pt-2">
+                                    <div className="flex items-center justify-between pl-1">
+                                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">AI Feedback</h4>
+                                        <Badge variant="outline" className={getScoreBadgeClass(questions[selectedPastQuestion].feedback.score)}>
+                                            Score: {questions[selectedPastQuestion].feedback.score}/10
+                                        </Badge>
+                                    </div>
+                                    <div className="p-5 bg-card border border-border/50 shadow-sm rounded-xl text-sm leading-relaxed text-muted-foreground">
+                                        <p>{questions[selectedPastQuestion].feedback.analysis}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>

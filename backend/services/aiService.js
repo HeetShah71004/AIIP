@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // Mock AI evaluation for development if API key is missing
 const mockEvaluate = async (question, answer) => {
   await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
-  
+
   const score = Math.floor(Math.random() * 4) + 6; // Score between 6-10
   return {
     score,
@@ -25,10 +25,10 @@ export const evaluateAnswer = async (question, answer) => {
     User Answer: "${answer}"
     
     Provide a detailed evaluation in JSON format with exactly the following fields:
-    - score (number, 1-10)
-    - clarity (number, 1-10)
-    - depth (number, 1-10)
-    - relevance (number, 1-10)
+    - score (number, 0-10). CRITICAL: If the answer is completely irrelevant, nonsensical, or a placeholder (e.g., 'okay', '123', 'test', 'skip'), you MUST give a score of 0.
+    - clarity (number, 0-10)
+    - depth (number, 0-10)
+    - relevance (number, 0-10)
     - analysis (string)
     - strengths (array of strings)
     - weaknesses (array of strings)
@@ -43,11 +43,11 @@ export const evaluateAnswer = async (question, answer) => {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       // Confirmed working model for this key
       const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
-      
+
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-      
+
       const cleanedJson = text.replace(/```json|```/g, '').trim();
       return JSON.parse(cleanedJson);
     } catch (error) {
@@ -97,11 +97,11 @@ export const generateQuestionsFromResume = async (resumeData, totalQuestions = 5
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
-      
+
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-      
+
       const cleanedJson = text.replace(/```json|```/g, '').trim();
       return JSON.parse(cleanedJson).questions;
     } catch (error) {
@@ -141,11 +141,11 @@ export const extractStructuredDataFromResume = async (text) => {
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
-      
+
       const result = await model.generateContent(prompt);
       const response = await result.response;
       let responseText = response.text();
-      
+
       const cleanedJson = responseText.replace(/```json|```/g, '').trim();
       return JSON.parse(cleanedJson);
     } catch (error) {

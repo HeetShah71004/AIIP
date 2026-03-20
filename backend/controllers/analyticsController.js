@@ -28,7 +28,13 @@ export const getAnalyticsSummary = async (req, res) => {
         }
       },
       { $unwind: '$sessionData' },
-      { $match: { 'sessionData.user': new mongoose.Types.ObjectId(userId) } },
+      { 
+        $match: { 
+          'sessionData.user': new mongoose.Types.ObjectId(userId),
+          'sessionData.status': 'completed',
+          'feedback.score': { $exists: true, $ne: null }
+        } 
+      },
       {
         $lookup: {
           from: 'questionbanks',
@@ -41,7 +47,7 @@ export const getAnalyticsSummary = async (req, res) => {
       {
         $group: {
           _id: '$bankData.category',
-          avgScore: { $avg: '$feedback.score' },
+          topScore: { $avg: '$feedback.score' },
           count: { $sum: 1 }
         }
       }
@@ -50,10 +56,19 @@ export const getAnalyticsSummary = async (req, res) => {
     // 3. Overall stats
     const totalSessions = await Session.countDocuments({ user: userId, status: 'completed' });
     
-    // Total questions answered
+    const completedSessionIds = await Session.find({ user: userId, status: 'completed' }).distinct('_id');
+    
+    // Total questions actually answered
     const totalQuestionsAnswered = await Question.countDocuments({
-      session: { $in: await Session.find({ user: userId, status: 'completed' }).distinct('_id') },
+      session: { $in: completedSessionIds },
+      answer: { $ne: '__SKIPPED__' },
       'feedback.score': { $exists: true }
+    });
+
+    // Total questions skipped
+    const totalSkippedQuestions = await Question.countDocuments({
+      session: { $in: completedSessionIds },
+      answer: '__SKIPPED__'
     });
 
     // Highest score
@@ -109,6 +124,7 @@ export const getAnalyticsSummary = async (req, res) => {
         categoryStats,
         totalSessions,
         totalQuestionsAnswered,
+        totalSkippedQuestions,
         totalPages: Math.ceil(totalSessions / limit),
         currentPage: page,
         highestScore: highestScoreData?.score || 0,

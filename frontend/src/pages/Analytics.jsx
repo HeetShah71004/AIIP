@@ -56,9 +56,11 @@ const Analytics = () => {
     score: s.score
   })).reverse();
 
+  const maxScoreInTrend = lineData.length > 0 ? Math.max(...lineData.map(d => d.score)) : 0;
+
   const barData = data.categoryStats.map(c => ({
     name: c._id || 'General',
-    score: parseFloat(c.avgScore.toFixed(1))
+    score: parseFloat((c.topScore || c.avgScore || 0).toFixed(1))
   }));
 
   return (
@@ -105,14 +107,33 @@ const Analytics = () => {
           </CardContent>
         </Card>
         
-        <Card className="border-border/50 shadow-sm border-l-4 border-l-orange-500">
+        <Card className="border-border/50 shadow-sm border-l-4 border-l-orange-500 relative group cursor-pointer transition-colors hover:bg-muted/30">
           <CardContent className="flex items-center gap-4 p-6">
             <div className="p-3 rounded-xl bg-orange-500/10 text-orange-600">
               <Target size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Questions Answered</p>
-              <h3 className="text-2xl font-bold tracking-tight">{data.totalQuestionsAnswered}</h3>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Questions Attempted</p>
+              <h3 className="text-2xl font-bold tracking-tight">{data.totalQuestionsAnswered + (data.totalSkippedQuestions || 0)}</h3>
+            </div>
+            
+            {/* Hover Data Info Tooltip */}
+            <div className="absolute left-1/2 -bottom-2 translate-y-full -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 min-w-44">
+              <div className="bg-popover text-popover-foreground border border-border shadow-xl rounded-lg p-3 text-sm flex flex-col gap-2 relative">
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-muted-foreground font-medium">Total:</span>
+                  <span className="font-bold text-primary">{data.totalQuestionsAnswered + (data.totalSkippedQuestions || 0)}</span>
+                </div>
+                <div className="h-px bg-border w-full my-0.5"></div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-muted-foreground font-medium">Completed:</span>
+                  <span className="font-bold text-orange-600">{data.totalQuestionsAnswered}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-muted-foreground font-medium">Skipped:</span>
+                  <span className="font-bold">{data.totalSkippedQuestions || 0}</span>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -148,6 +169,7 @@ const Analytics = () => {
                     stroke="hsl(var(--muted-foreground))" 
                     fontSize={12} 
                     domain={[0, 10]} 
+                    ticks={[0, 2, 4, 6, 8, 10]}
                     tickLine={false}
                     axisLine={false}
                   />
@@ -170,7 +192,27 @@ const Analytics = () => {
                     dataKey="score" 
                     stroke="hsl(var(--primary))" 
                     strokeWidth={3} 
-                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }} 
+                    dot={(props) => {
+                      const { cx, cy, value, index } = props;
+                      const isMax = value === maxScoreInTrend && value > 0;
+                      if (isMax) {
+                        return (
+                          <g key={`custom-dot-${index}`}>
+                            <circle cx={cx} cy={cy} r={10} fill="#f59e0b" opacity={0.3} />
+                            <circle cx={cx} cy={cy} r={5} fill="#f59e0b" stroke="hsl(var(--background))" strokeWidth={2} />
+                          </g>
+                        );
+                      }
+                      return (
+                        <circle 
+                          key={`custom-dot-${index}`} 
+                          cx={cx} cy={cy} r={4} 
+                          fill="hsl(var(--primary))" 
+                          stroke="hsl(var(--background))" 
+                          strokeWidth={2} 
+                        />
+                      );
+                    }}
                     activeDot={{ r: 6, strokeWidth: 0 }} 
                   />
                 </LineChart>
@@ -186,7 +228,7 @@ const Analytics = () => {
             </div>
             <div>
               <CardTitle>Category Breakdown</CardTitle>
-              <CardDescription>Average scores by interview topic</CardDescription>
+              <CardDescription>Top scores by interview topic</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
@@ -200,12 +242,12 @@ const Analytics = () => {
                     fontSize={11} 
                     tickLine={false}
                     axisLine={false}
-                    tick={false}
                   />
                   <YAxis 
                     stroke="hsl(var(--muted-foreground))" 
                     fontSize={12} 
-                    domain={[0, 10]} 
+                    domain={[0, 10]}
+                    ticks={[0, 2, 4, 6, 8, 10]}
                     tickLine={false}
                     axisLine={false}
                   />
@@ -216,10 +258,10 @@ const Analytics = () => {
                         borderRadius: 'var(--radius)',
                         boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
                     }}
-                    labelStyle={{ display: 'none' }}
+                    labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold', marginBottom: '8px' }}
                     cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
                   />
-                  <Bar name="Avg. Score" dataKey="score" radius={[6, 6, 0, 0]} barSize={40}>
+                  <Bar name="Top Score" dataKey="score" radius={[6, 6, 0, 0]} barSize={40}>
                     {barData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
