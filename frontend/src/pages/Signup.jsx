@@ -81,7 +81,7 @@ const Signup = () => {
         }
         
         .animate-mesh {
-          background: linear-gradient(-45deg, #e8eaf6, #f3e5f5, #e3f2fd, #e8eaf6);
+          background: linear-gradient(-45deg, #e8eaf6, #e3f2fd, #e3f2fd, #e8eaf6);
           background-size: 400% 400%;
           animation: mesh 15s ease infinite;
         }
