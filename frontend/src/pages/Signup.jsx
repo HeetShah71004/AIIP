@@ -224,14 +224,15 @@ const Signup = () => {
               <div className="h-px w-full bg-slate-100"></div>
             </div>
 
-            <div className="w-full transform transition-all duration-300 hover:scale-[1.02]">
+            <div className="w-full flex justify-center transform transition-all duration-300 hover:scale-[1.02]">
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={() => toast.error('Google Sign Up Failed')}
                 useOneTap
                 theme="outline"
                 shape="pill"
-                width="100%"
+                size="large"
+                text="continue_with"
               />
             </div>
 
