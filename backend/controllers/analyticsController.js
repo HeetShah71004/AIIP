@@ -137,3 +137,81 @@ export const getAnalyticsSummary = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Recommended practice topics per category
+const PRACTICE_TOPICS = {
+  'Frontend': ['DOM Manipulation & Event Handling', 'React Hooks and State Management', 'CSS Layouts (Flexbox & Grid)', 'Web Performance Optimization', 'TypeScript Fundamentals'],
+  'Backend': ['REST API Design & Best Practices', 'Database Indexing & Query Optimization', 'Authentication & Authorization (JWT/OAuth)', 'Error Handling & Middleware', 'Caching Strategies (Redis)'],
+  'Fullstack': ['System Design Fundamentals', 'API Integration Patterns', 'Database Schema Design', 'Deployment & CI/CD Pipelines', 'Monorepo Management'],
+  'Mobile': ['React Native Navigation', 'State Management (Redux/Zustand)', 'Native APIs & Permissions', 'App Performance Profiling', 'Offline-first Architecture'],
+  'DevOps': ['Docker & Containerization', 'Kubernetes Orchestration', 'Infrastructure as Code (Terraform)', 'Monitoring & Logging (Prometheus/Grafana)', 'CI/CD Pipeline Design'],
+  'Data Science': ['Data Cleaning & Feature Engineering', 'Model Evaluation Metrics', 'Pandas & NumPy Operations', 'Machine Learning Algorithms', 'SQL for Data Analysis'],
+  'Behavioral': ['STAR Method Storytelling', 'Conflict Resolution Examples', 'Leadership & Ownership Stories', 'Failure & Learning Examples', 'Cross-team Collaboration'],
+};
+
+// Get skill gap analysis: compare user per-category scores vs ideal (10/10)
+export const getSkillGap = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Aggregate average score per category across all completed sessions
+    const categoryScores = await Question.aggregate([
+      {
+        $lookup: {
+          from: 'sessions',
+          localField: 'session',
+          foreignField: '_id',
+          as: 'sessionData'
+        }
+      },
+      { $unwind: '$sessionData' },
+      {
+        $match: {
+          'sessionData.user': new mongoose.Types.ObjectId(userId),
+          'sessionData.status': 'completed',
+          'feedback.score': { $exists: true, $ne: null },
+          'answer': { $ne: '__SKIPPED__' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'questionbanks',
+          localField: 'questionBankId',
+          foreignField: '_id',
+          as: 'bankData'
+        }
+      },
+      { $unwind: '$bankData' },
+      {
+        $group: {
+          _id: '$bankData.category',
+          avgScore: { $avg: '$feedback.score' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // If no data yet, return empty
+    if (categoryScores.length === 0) {
+      return res.status(200).json({ success: true, data: { skillGaps: [], hasData: false } });
+    }
+
+    // Compute gap from ideal (10) and sort by biggest gap first
+    const skillGaps = categoryScores
+      .map(c => ({
+        category: c._id,
+        avgScore: parseFloat(c.avgScore.toFixed(2)),
+        gap: parseFloat((10 - c.avgScore).toFixed(2)),
+        strengthPct: parseFloat(((c.avgScore / 10) * 100).toFixed(1)),
+        count: c.count,
+        recommendedTopics: (PRACTICE_TOPICS[c._id] || []).slice(0, 3)
+      }))
+      .sort((a, b) => b.gap - a.gap)
+      .slice(0, 3); // Return top-3 weakest
+
+    res.status(200).json({ success: true, data: { skillGaps, hasData: true } });
+  } catch (error) {
+    console.error('Skill Gap Error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
