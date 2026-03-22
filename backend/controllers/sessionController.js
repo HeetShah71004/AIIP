@@ -1,12 +1,17 @@
 import Session from '../models/Session.js';
 import Question from '../models/Question.js';
 import QuestionBank from '../models/QuestionBank.js';
-import { evaluateAnswer, generateQuestionsFromResume } from '../services/aiService.js';
+import { 
+    evaluateAnswer, 
+    generateQuestionsFromResume, 
+    generateTargetedQuestions, 
+    generateFollowUpQuestion 
+} from '../services/aiService.js';
 
 // Start a new interview session
 export const startSession = async (req, res) => {
   try {
-    const { totalQuestions = 5, category, difficulty, useResume = false } = req.body;
+    const { totalQuestions = 5, category, difficulty, useResume = false, company, roleLevel, interviewRound } = req.body;
     
     let initialQuestions = [];
     let resumeData = null;
@@ -23,6 +28,42 @@ export const startSession = async (req, res) => {
         const generatedQuestions = await generateQuestionsFromResume(resumeData, totalQuestions);
         initialQuestions = generatedQuestions.map(text => ({ text }));
       }
+    } else if (company || roleLevel || interviewRound || category || difficulty) {
+      const matchQuery = {};
+      if (company) matchQuery.companyTags = { $in: [company] };
+      if (roleLevel) matchQuery.roleLevel = roleLevel;
+      if (interviewRound) matchQuery.interviewRound = interviewRound;
+      if (category) matchQuery.category = category;
+      if (difficulty) matchQuery.difficulty = difficulty;
+
+      let bankQuestions = await QuestionBank.aggregate([
+        { $match: matchQuery },
+        { $sample: { size: totalQuestions } }
+      ]);
+      
+      if (bankQuestions.length < totalQuestions) {
+        try {
+          const needed = totalQuestions - bankQuestions.length;
+          const generatedTextArray = await generateTargetedQuestions(company, roleLevel, interviewRound, needed);
+          
+          // Save the generated questions back to QuestionBank to enrich the DB
+          const newBankQuestions = await Promise.all(generatedTextArray.map(async text => {
+             return await QuestionBank.create({
+                text,
+                category: category || 'Fullstack',
+                difficulty: difficulty || 'Medium',
+                companyTags: company ? [company] : [],
+                roleLevel,
+                interviewRound
+             });
+          }));
+          bankQuestions = [...bankQuestions, ...newBankQuestions];
+        } catch (aiErr) {
+          console.error("AI Generation failed", aiErr);
+        }
+      }
+
+      initialQuestions = bankQuestions.map(bq => ({ text: bq.text, bankId: bq._id }));
     }
 
     // Create new session
@@ -30,7 +71,10 @@ export const startSession = async (req, res) => {
       user: req.user.id,
       totalQuestions,
       status: 'pending',
-      parsedData: resumeData // Carry over parsed data if using resume
+      parsedData: resumeData, // Carry over parsed data if using resume
+      company,
+      roleLevel,
+      interviewRound
     });
 
     // If we have initial questions (from resume), create Question entries
@@ -38,7 +82,8 @@ export const startSession = async (req, res) => {
       const questionPromises = initialQuestions.map(q => 
         Question.create({
           session: session._id,
-          text: q.text
+          text: q.text,
+          questionBankId: q.bankId
         })
       );
       await Promise.all(questionPromises);
@@ -131,6 +176,30 @@ export const submitAnswer = async (req, res) => {
         session.score = ((session.score * (session.completedQuestions - 1)) + evaluation.score) / session.completedQuestions;
     }
 
+    const nextIndex = session.completedQuestions;
+    if (nextIndex < session.totalQuestions) {
+        let followUpText;
+        if (answer === '__SKIPPED__' || evaluation.score === 0) {
+            followUpText = "It seems we had a bit of a disconnect there. Let's try a fresh one: Can you tell me about a time you had to learn a new technology quickly?";
+        } else {
+            // Generate follow-up question
+            followUpText = await generateFollowUpQuestion(question.text, answer, evaluation);
+        }
+        
+        // Check if there's already a next question placeholder
+        let nextQuestion = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
+        
+        if (nextQuestion) {
+            nextQuestion.text = followUpText;
+            await nextQuestion.save();
+        } else {
+            await Question.create({
+                session: session._id,
+                text: followUpText
+            });
+        }
+    }
+
     if (session.completedQuestions >= session.totalQuestions) {
         session.status = 'completed';
         session.completedAt = Date.now();
@@ -143,6 +212,100 @@ export const submitAnswer = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Streaming version of submitAnswer using SSE
+export const submitAnswerStream = async (req, res) => {
+  const { questionId, answer } = req.body;
+  const sessionId = req.params.id;
+
+  // Set headers for SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  const sendEvent = (event, data) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    const session = await Session.findById(sessionId);
+    if (!session) {
+      sendEvent('error', { message: 'Session not found' });
+      return res.end();
+    }
+
+    let question = await Question.findById(questionId);
+    if (!question) {
+      sendEvent('error', { message: 'Question not found' });
+      return res.end();
+    }
+
+    // 1. Send "thinking" status for evaluation
+    sendEvent('status', { message: 'Evaluating your answer...' });
+
+    // 2. Perform evaluation
+    let evaluation;
+    if (answer === '__SKIPPED__') {
+      evaluation = {
+        score: 0, analysis: "Question skipped.", strengths: [], weaknesses: ["Skipped"], suggestions: ["Don't skip!"]
+      };
+    } else {
+      evaluation = await evaluateAnswer(question.text, answer);
+    }
+
+    // Save evaluation
+    question.answer = answer;
+    question.feedback = evaluation;
+    await question.save();
+
+    // Update session
+    session.completedQuestions += 1;
+    session.score = session.completedQuestions === 1 
+      ? evaluation.score 
+      : ((session.score * (session.completedQuestions - 1)) + evaluation.score) / session.completedQuestions;
+    
+    if (session.completedQuestions >= session.totalQuestions) {
+      session.status = 'completed';
+      session.completedAt = Date.now();
+    }
+    await session.save();
+
+    // 3. Stream the evaluation result
+    sendEvent('evaluation', evaluation);
+
+    // 4. Handle next question
+    if (session.status !== 'completed') {
+      sendEvent('status', { message: 'Generating follow-up question...' });
+      
+      let followUpText;
+      if (answer === '__SKIPPED__' || evaluation.score === 0) {
+        followUpText = "It seems we had a bit of a disconnect there. Let's try a fresh one: Can you tell me about a time you had to learn a new technology quickly?";
+      } else {
+        followUpText = await generateFollowUpQuestion(question.text, answer, evaluation);
+      }
+      
+      // Update/Create next question in DB
+      let nextQuestion = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
+      if (nextQuestion) {
+        nextQuestion.text = followUpText;
+        await nextQuestion.save();
+      } else {
+        nextQuestion = await Question.create({ session: session._id, text: followUpText });
+      }
+
+      // 5. Stream the next question
+      sendEvent('nextQuestion', { text: followUpText, _id: nextQuestion._id });
+    } else {
+      sendEvent('final', { message: 'Session completed!' });
+    }
+
+    res.end();
+  } catch (error) {
+    console.error('Streaming error:', error);
+    sendEvent('error', { message: error.message });
+    res.end();
   }
 };
 

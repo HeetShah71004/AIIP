@@ -42,7 +42,10 @@ const sessionSchema = new mongoose.Schema({
   },
   completedAt: {
     type: Date
-  }
+  },
+  company: String,
+  roleLevel: String,
+  interviewRound: String
 });
 
 export default mongoose.model('Session', sessionSchema);

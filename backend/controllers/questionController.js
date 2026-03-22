@@ -3,12 +3,14 @@ import QuestionBank from '../models/QuestionBank.js';
 // Get all questions from the bank with filtering and pagination
 export const getQuestions = async (req, res) => {
   try {
-    const { category, difficulty, company, search, page = 1, limit = 10 } = req.query;
+    const { category, difficulty, company, roleLevel, interviewRound, search, page = 1, limit = 10 } = req.query;
     
     const query = {};
     if (category) query.category = category;
     if (difficulty) query.difficulty = difficulty;
     if (company) query.companyTags = { $in: [company] };
+    if (roleLevel) query.roleLevel = roleLevel;
+    if (interviewRound) query.interviewRound = interviewRound;
     if (search) query.text = { $regex: search, $options: 'i' };
 
     const total = await QuestionBank.countDocuments(query);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Trophy, Target, Zap, Play, ChevronRight, Trash2 } from 'lucide-react';
+import { Trophy, Target, Zap, Play, ChevronRight, Trash2, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
 import {
@@ -30,17 +30,9 @@ const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Hide scrollbar for the home page only
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
-
   const fetchSessions = async () => {
     try {
-      const res = await api.get(`/analytics/summary?page=${currentPage}&limit=5`);
+      const res = await api.get(`/analytics/summary?page=${currentPage}&limit=5&t=${Date.now()}`);
       setSessions(res.data.data.sessionHistory);
       setStats(res.data.data);
       setTotalPages(res.data.data.totalPages);
@@ -69,7 +61,13 @@ const Dashboard = () => {
     }
   };
 
-  const formatJobTitle = (title) => {
+  const formatJobTitle = (session) => {
+    if (session.company) {
+      const role = session.roleLevel ? `${session.roleLevel} ` : '';
+      const round = session.interviewRound ? `(${session.interviewRound})` : '';
+      return `${session.company} - ${role}Interview ${round}`.trim();
+    }
+    const title = session.parsedData?.developerTitle;
     if (!title) return 'Interview Session';
     let clean = title.replace(/\b(profile|summary|objective|india|i am a|i am an|i am|an experienced|experienced|passionate|dedicated|motivated)\b/gi, '').trim();
     clean = clean.replace(/^[^\w\s]+/, '').trim();
@@ -88,9 +86,14 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold tracking-tight">Welcome, {user?.name}</h1>
           <p className="text-muted-foreground text-lg">Ready for your next interview?</p>
         </div>
-        <Button onClick={() => navigate('/upload')} className="gap-2 shrink-0">
-          <Play size={20} fill="currentColor" /> Quick Start
-        </Button>
+        <div className="flex gap-3 shrink-0">
+          <Button variant="outline" onClick={() => navigate('/company-prep')} className="gap-2">
+            <Building2 size={20} /> Targeted Practice
+          </Button>
+          <Button onClick={() => navigate('/upload')} className="gap-2">
+            <Play size={20} fill="currentColor" /> Quick Start
+          </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -154,7 +157,7 @@ const Dashboard = () => {
                       <div className="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-primary to-primary/50 scale-y-0 group-hover:scale-y-100 transition-transform duration-500 origin-center" />
                       <div className="space-y-1">
                         <p className="font-semibold group-hover:text-primary transition-colors line-clamp-1">
-                          {formatJobTitle(s.parsedData?.developerTitle)}
+                          {formatJobTitle(s)}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {new Date(s.completedAt || s.createdAt).toLocaleString(undefined, {

@@ -1,0 +1,213 @@
+[
+  {
+    "_id": "69bfe56b84175389a0bf6c4e",
+    "user": "69b92bcf0ad91e372bf544c4",
+    "score": 0,
+    "parsedData": null,
+    "duration": 0,
+    "totalQuestions": 5,
+    "completedQuestions": 5,
+    "status": "completed",
+    "company": "Meta",
+    "roleLevel": "Junior",
+    "interviewRound": "Technical",
+    "createdAt": "2026-03-22T12:49:47.213Z",
+    "__v": 0,
+    "completedAt": "2026-03-22T12:50:43.563Z"
+  },
+  {
+    "_id": "69bfe48daf8371ddc6d066dd",
+    "user": "69b92bcf0ad91e372bf544c4",
+    "score": 0,
+    "parsedData": null,
+    "duration": 0,
+    "totalQuestions": 5,
+    "completedQuestions": 5,
+    "status": "completed",
+    "company": "Google",
+    "roleLevel": "Junior",
+    "interviewRound": "Technical",
+    "createdAt": "2026-03-22T12:46:05.705Z",
+    "__v": 0,
+    "completedAt": "2026-03-22T12:49:15.951Z"
+  },
+  {
+    "_id": "69bce743b0457e83efdc7aa4",
+    "user": "69b92bcf0ad91e372bf544c4",
+    "score": 0,
+    "parsedData": {
+      "developerTitle": "Machine Learning Engineer",
+      "primaryStack": "AWS",
+      "skills": [
+        "C++",
+        "SQL",
+        "MongoDB",
+        "Docker",
+        "AWS",
+        "GitHub"
+      ],
+      "projects": [
+        {
+          "name": "MediScan – AI Radiology Assistant",
+          "languages": [
+            "AWS"
+          ]
+        }
+      ],
+      "education": [
+        {
+          "degree": "M.Tech – Artificial Intelligence",
+          "school": "Extracted"
+        },
+        {
+          "degree": "IIT Hyderabad",
+          "school": "Extracted"
+        }
+      ]
+    },
+    "duration": 0,
+    "totalQuestions": 5,
+    "completedQuestions": 5,
+    "status": "completed",
+    "createdAt": "2026-03-20T06:20:51.544Z",
+    "__v": 0,
+    "completedAt": "2026-03-20T06:25:25.120Z"
+  },
+  {
+    "_id": "69bce73cb0457e83efdc7aa0",
+    "user": "69b92bcf0ad91e372bf544c4",
+    "score": 0,
+    "resumeText": "\n\nAryan SharmaAI / Machine Learning Engineer\nBengaluru, India | aryan.sharma@email.com | +91 98765 43210 | linkedin.com/in/aryan-sharma | github.com/aryan-sharma\nPROFESSIONAL SUMMARY\nResults-driven AI/ML Engineer with 5+ years of experience designing, developing, and deploying machine learning models\nand AI-powered products at scale. Expertise in deep learning, NLP, computer vision, and MLOps. Passionate about\nconverting complex data into actionable intelligence and delivering measurable business impact.\nTECHNICAL SKILLS\nLanguagesPython, R, SQL, Bash, C++\nML / DL FrameworksTensorFlow, PyTorch, Keras, Scikit-learn, XGBoost, LightGBM\nNLP & GenAIHugging Face Transformers, LangChain, OpenAI API, RAG, Fine-tuning LLMs\nComputer VisionOpenCV, YOLO, Detectron2, Stable Diffusion, CLIP\nMLOps & CloudMLflow, Kubeflow, DVC, Docker, Kubernetes, AWS SageMaker, GCP Vertex AI\nData & VizPandas, NumPy, Spark, Tableau, Matplotlib, Seaborn\nDatabasesPostgreSQL, MongoDB, Pinecone, Redis, BigQuery\nWORK EXPERIENCE\nSenior ML Engineer — Infosys AI Labs\nJan 2022 – Present\n• Led end-to-end development of a real-time fraud detection system using Graph Neural Networks, reducing false\npositives by 38% and saving $4M annually.\n• Designed and deployed a multi-modal recommendation engine (NLP + CV) for an e-commerce client, increasing CTR\nby 22%.\n• Built a RAG-based internal knowledge assistant using LangChain + Pinecone, cutting support ticket resolution time by\n45%.\n• Established MLOps pipelines with MLflow and Kubeflow on GCP, reducing model deployment cycle from 3 weeks to 2\ndays.\nMachine Learning Engineer — Mu Sigma Inc.\nJun 2019 – Dec 2021\n• Developed a customer churn prediction model (XGBoost + SHAP) achieving 91% AUC for a telecom client with 10M+\ncustomers.\n• Fine-tuned BERT-based models for sentiment analysis and entity extraction on 50GB of unstructured customer\nfeedback.\n• Created an automated data pipeline using Apache Spark and Airflow processing 500GB daily on AWS EMR.\n• Mentored a team of 4 junior data scientists; conducted weekly knowledge-sharing sessions on deep learning best\npractices.\nData Science Intern — Tata Consultancy Services\nJan 2019 – May 2019\n• Built an image classification pipeline using ResNet-50 for defect detection in manufacturing, achieving 94.5%\naccuracy.\n• Automated EDA and feature engineering workflows, reducing pre-modelling time by 30%.\nEDUCATION\nM.Tech – Artificial Intelligence\nIIT Hyderabad\n2017 – 2019 | CGPA: 9.1/10\n\nB.Tech – Computer Science & Engineering\nNIT Warangal\n2013 – 2017 | CGPA: 8.7/10\nKEY PROJECTS\n• MediScan – AI Radiology Assistant: Built a chest X-ray diagnosis tool using DenseNet-121 achieving 96%\nsensitivity on pneumonia detection. Integrated Grad-CAM for explainability. Deployed as a REST API on AWS with\n<200ms latency.\n• LLM-powered Code Review Bot: Developed a GitHub Action that auto-reviews PRs using GPT-4 fine-tuned on\ninternal coding standards. Reduced review cycle time by 60% across a 50-engineer team.\n• Real-time Object Tracking System: Implemented YOLOv8 + DeepSORT for multi-camera pedestrian tracking in\nsmart-city infrastructure. Processes 30 FPS on NVIDIA Jetson Orin edge device.\nCERTIFICATIONS & ACHIEVEMENTS\n• AWS Certified Machine Learning – Specialty (2023)\n• Google Professional ML Engineer (2022)\n• DeepLearning.AI MLOps Specialization – Coursera (2021)\n• Kaggle Competitions Expert – Top 3% globally; Gold medal in NLP competition (2022)\n• Speaker at PyData Hyderabad 2023: 'Scalable RAG Pipelines in Production'",
+    "resumeUrl": "https://res.cloudinary.com/dp7xnty3i/raw/upload/v1773987646/1773987641924.pdf",
+    "parsedData": {
+      "developerTitle": "Machine Learning Engineer",
+      "primaryStack": "AWS",
+      "skills": [
+        "C++",
+        "SQL",
+        "MongoDB",
+        "Docker",
+        "AWS",
+        "GitHub"
+      ],
+      "projects": [
+        {
+          "name": "MediScan – AI Radiology Assistant",
+          "languages": [
+            "AWS"
+          ]
+        }
+      ],
+      "education": [
+        {
+          "degree": "M.Tech – Artificial Intelligence",
+          "school": "Extracted"
+        },
+        {
+          "degree": "IIT Hyderabad",
+          "school": "Extracted"
+        }
+      ]
+    },
+    "duration": 0,
+    "totalQuestions": 5,
+    "completedQuestions": 0,
+    "status": "pending",
+    "createdAt": "2026-03-20T06:20:44.567Z",
+    "__v": 0
+  },
+  {
+    "_id": "69bce5e0b0457e83efdc7a3b",
+    "user": "69b92bcf0ad91e372bf544c4",
+    "score": 0,
+    "resumeText": "\n\nAryan SharmaAI / Machine Learning Engineer\nBengaluru, India | aryan.sharma@email.com | +91 98765 43210 | linkedin.com/in/aryan-sharma | github.com/aryan-sharma\nPROFESSIONAL SUMMARY\nResults-driven AI/ML Engineer with 5+ years of experience designing, developing, and deploying machine learning models\nand AI-powered products at scale. Expertise in deep learning, NLP, computer vision, and MLOps. Passionate about\nconverting complex data into actionable intelligence and delivering measurable business impact.\nTECHNICAL SKILLS\nLanguagesPython, R, SQL, Bash, C++\nML / DL FrameworksTensorFlow, PyTorch, Keras, Scikit-learn, XGBoost, LightGBM\nNLP & GenAIHugging Face Transformers, LangChain, OpenAI API, RAG, Fine-tuning LLMs\nComputer VisionOpenCV, YOLO, Detectron2, Stable Diffusion, CLIP\nMLOps & CloudMLflow, Kubeflow, DVC, Docker, Kubernetes, AWS SageMaker, GCP Vertex AI\nData & VizPandas, NumPy, Spark, Tableau, Matplotlib, Seaborn\nDatabasesPostgreSQL, MongoDB, Pinecone, Redis, BigQuery\nWORK EXPERIENCE\nSenior ML Engineer — Infosys AI Labs\nJan 2022 – Present\n• Led end-to-end development of a real-time fraud detection system using Graph Neural Networks, reducing false\npositives by 38% and saving $4M annually.\n• Designed and deployed a multi-modal recommendation engine (NLP + CV) for an e-commerce client, increasing CTR\nby 22%.\n• Built a RAG-based internal knowledge assistant using LangChain + Pinecone, cutting support ticket resolution time by\n45%.\n• Established MLOps pipelines with MLflow and Kubeflow on GCP, reducing model deployment cycle from 3 weeks to 2\ndays.\nMachine Learning Engineer — Mu Sigma Inc.\nJun 2019 – Dec 2021\n• Developed a customer churn prediction model (XGBoost + SHAP) achieving 91% AUC for a telecom client with 10M+\ncustomers.\n• Fine-tuned BERT-based models for sentiment analysis and entity extraction on 50GB of unstructured customer\nfeedback.\n• Created an automated data pipeline using Apache Spark and Airflow processing 500GB daily on AWS EMR.\n• Mentored a team of 4 junior data scientists; conducted weekly knowledge-sharing sessions on deep learning best\npractices.\nData Science Intern — Tata Consultancy Services\nJan 2019 – May 2019\n• Built an image classification pipeline using ResNet-50 for defect detection in manufacturing, achieving 94.5%\naccuracy.\n• Automated EDA and feature engineering workflows, reducing pre-modelling time by 30%.\nEDUCATION\nM.Tech – Artificial Intelligence\nIIT Hyderabad\n2017 – 2019 | CGPA: 9.1/10\n\nB.Tech – Computer Science & Engineering\nNIT Warangal\n2013 – 2017 | CGPA: 8.7/10\nKEY PROJECTS\n• MediScan – AI Radiology Assistant: Built a chest X-ray diagnosis tool using DenseNet-121 achieving 96%\nsensitivity on pneumonia detection. Integrated Grad-CAM for explainability. Deployed as a REST API on AWS with\n<200ms latency.\n• LLM-powered Code Review Bot: Developed a GitHub Action that auto-reviews PRs using GPT-4 fine-tuned on\ninternal coding standards. Reduced review cycle time by 60% across a 50-engineer team.\n• Real-time Object Tracking System: Implemented YOLOv8 + DeepSORT for multi-camera pedestrian tracking in\nsmart-city infrastructure. Processes 30 FPS on NVIDIA Jetson Orin edge device.\nCERTIFICATIONS & ACHIEVEMENTS\n• AWS Certified Machine Learning – Specialty (2023)\n• Google Professional ML Engineer (2022)\n• DeepLearning.AI MLOps Specialization – Coursera (2021)\n• Kaggle Competitions Expert – Top 3% globally; Gold medal in NLP competition (2022)\n• Speaker at PyData Hyderabad 2023: 'Scalable RAG Pipelines in Production'",
+    "resumeUrl": "https://res.cloudinary.com/dp7xnty3i/raw/upload/v1773987290/1773987286811.pdf",
+    "parsedData": {
+      "developerTitle": "AI / Machine Learning Engineer",
+      "primaryStack": "Python, Deep Learning, MLOps, Cloud (AWS/GCP)",
+      "skills": [
+        "Python",
+        "R",
+        "SQL",
+        "Bash",
+        "C++",
+        "TensorFlow",
+        "PyTorch",
+        "Keras",
+        "Scikit-learn",
+        "XGBoost",
+        "LightGBM",
+        "Hugging Face Transformers",
+        "LangChain",
+        "OpenAI API",
+        "RAG",
+        "Fine-tuning LLMs",
+        "OpenCV",
+        "YOLO",
+        "Detectron2",
+        "Stable Diffusion",
+        "CLIP",
+        "MLflow",
+        "Kubeflow",
+        "DVC",
+        "Docker",
+        "Kubernetes",
+        "AWS SageMaker",
+        "GCP Vertex AI",
+        "Pandas",
+        "NumPy",
+        "Spark",
+        "Tableau",
+        "Matplotlib",
+        "Seaborn",
+        "PostgreSQL",
+        "MongoDB",
+        "Pinecone",
+        "Redis",
+        "BigQuery"
+      ],
+      "projects": [
+        {
+          "name": "MediScan – AI Radiology Assistant",
+          "languages": [
+            "DenseNet-121",
+            "Grad-CAM",
+            "AWS",
+            "REST API"
+          ]
+        },
+        {
+          "name": "LLM-powered Code Review Bot",
+          "languages": [
+            "GPT-4",
+            "GitHub Action"
+          ]
+        },
+        {
+          "name": "Real-time Object Tracking System",
+          "languages": [
+            "YOLOv8",
+            "DeepSORT",
+            "NVIDIA Jetson Orin"
+          ]
+        }
+      ],
+      "education": [
+        {
+          "degree": "M.Tech – Artificial Intelligence",
+          "school": "IIT Hyderabad"
+        },
+        {
+          "degree": "B.Tech – Computer Science & Engineering",
+          "school": "NIT Warangal"
+        }
+      ]
+    },
+    "duration": 0,
+    "totalQuestions": 5,
+    "completedQuestions": 0,
+    "status": "pending",
+    "createdAt": "2026-03-20T06:14:56.995Z",
+    "__v": 0
+  }
+]

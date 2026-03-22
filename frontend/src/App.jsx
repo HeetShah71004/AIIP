@@ -12,6 +12,7 @@ import Profile from './pages/Profile';
 import MockInterview from './pages/MockInterview';
 import InterviewFeedback from './pages/InterviewFeedback';
 import Analytics from './pages/Analytics';
+import CompanySelection from './pages/CompanySelection';
 import Navbar from './components/Navbar';
 import './index.css';
 
@@ -57,7 +58,15 @@ const AppContent = () => {
             } 
           />
           <Route 
-            path="/profile" 
+            path="/company-prep" 
+            element={
+              <ProtectedRoute>
+                <CompanySelection />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile"  
             element={
               <ProtectedRoute>
                 <Profile />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, Timer, Award, CheckCircle, ChevronLeft, Loader2, XCircle, AlertCircle, LayoutGrid } from 'lucide-react';
+import { Send, Timer, Award, CheckCircle, ChevronLeft, Loader2, XCircle, AlertCircle, LayoutGrid, User, Bot } from 'lucide-react';
 import { getSession, submitAnswer, getQuestionsFromBank } from '../api/interviewApi';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -25,6 +25,23 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
+const TypingIndicator = () => (
+    <div className="flex gap-1.5 p-3 px-4 bg-muted/30 rounded-2xl w-fit animate-pulse border border-border/20">
+        <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]"></div>
+        <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.15s]"></div>
+        <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce"></div>
+    </div>
+);
+
+const ChatAvatar = ({ type }) => (
+    <div className={cn(
+        "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm border",
+        type === 'user' ? "bg-primary text-primary-foreground border-primary/20" : "bg-card text-primary border-border"
+    )}>
+        {type === 'user' ? <User size={14} /> : <Bot size={14} />}
+    </div>
+);
+
 const MockInterview = () => {
     const { sessionId } = useParams();
     const navigate = useNavigate();
@@ -40,6 +57,7 @@ const MockInterview = () => {
     const [showExitModal, setShowExitModal] = useState(false);
     const [selectedPastQuestion, setSelectedPastQuestion] = useState(null);
     const scrollAreaRef = useRef(null);
+    const isFinished = chatHistory.some(m => m.isFinal);
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -118,14 +136,19 @@ const MockInterview = () => {
     }, []);
 
     const handleSkip = async () => {
+        if (submitting) return;
         setShowSkipModal(false);
-        const currentQuestion = questions[currentQuestionIndex];
-        const questionMessage = { type: 'ai', text: currentQuestion.text, timestamp: currentQuestion.createdAt || new Date(), isQuestion: true };
-        const userMessage = { type: 'user', text: '[Question Skipped]', timestamp: new Date() };
-        
-        // Reset chat to just current Q and skipped answer
-        setChatHistory([questionMessage, userMessage]);
         setSubmitting(true);
+
+        const currentQuestion = questions[currentQuestionIndex];
+        const userMsg = { 
+            type: 'user', 
+            text: '[Question Skipped]', 
+            timestamp: new Date(),
+            id: Date.now() + '-user'
+        };
+        
+        setChatHistory(prev => [...prev, userMsg]);
 
         try {
             const res = await submitAnswer(sessionId, {
@@ -133,39 +156,55 @@ const MockInterview = () => {
                 answer: '__SKIPPED__'
             });
 
-            const feedbackMessage = {
+            const evaluationData = res.data.feedback;
+            
+            setChatHistory(prev => [...prev, {
                 type: 'ai',
-                text: res.data.feedback.analysis,
+                text: evaluationData.analysis,
                 timestamp: new Date(),
                 isFeedback: true,
-                score: res.data.feedback.score
-            };
+                score: evaluationData.score,
+                id: Date.now() + '-feedback'
+            }]);
 
             const nextIndex = currentQuestionIndex + 1;
-            
-            // Update local questions state to reflect skip status
-            setQuestions(prev => prev.map((q, idx) => 
-                idx === currentQuestionIndex ? { ...q, answer: '__SKIPPED__' } : q
-            ));
-
-            if (nextIndex < questions.length) {
-                const nextQuestionMessage = {
-                    type: 'ai',
-                    text: questions[nextIndex].text,
-                    timestamp: new Date(),
-                    isQuestion: true
-                };
-                setChatHistory([questionMessage, userMessage, feedbackMessage, nextQuestionMessage]);
-                setCurrentQuestionIndex(nextIndex);
+            if (nextIndex < session.totalQuestions) {
+                // Fetch the updated session to get the next question (which might have been updated/created by backend)
+                const res = await getSession(sessionId);
+                const updatedSessionData = res.data;
+                const nextQ = updatedSessionData.questions[nextIndex];
+                
+                if (nextQ) {
+                    setChatHistory(prev => [...prev, {
+                        type: 'ai',
+                        text: nextQ.text,
+                        timestamp: new Date(),
+                        isQuestion: true,
+                        id: nextQ._id
+                    }]);
+                    
+                    setQuestions(updatedSessionData.questions);
+                    setCurrentQuestionIndex(nextIndex);
+                    setSession(updatedSessionData);
+                }
             } else {
-                setChatHistory([questionMessage, userMessage, feedbackMessage, {
+                setChatHistory(prev => [...prev, {
                     type: 'ai',
-                    text: "That was the last question! You've completed the interview session. You can view your full report in the feedback page.",
+                    text: "That was the last question! You've completed the interview session.",
                     timestamp: new Date(),
-                    isFinal: true
+                    isFinal: true,
+                    id: 'final-msg'
                 }]);
+                setQuestions(prev => {
+                    const updated = [...prev];
+                    updated[currentQuestionIndex].answer = '__SKIPPED__';
+                    updated[currentQuestionIndex].feedback = evaluationData;
+                    return updated;
+                });
+                setCurrentQuestionIndex(nextIndex);
             }
         } catch (err) {
+            console.error(err);
             toast.error('Failed to skip question');
         } finally {
             setSubmitting(false);
@@ -174,58 +213,130 @@ const MockInterview = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!answer.trim()) return;
+        if (!answer.trim() || submitting) return;
 
         const currentQuestion = questions[currentQuestionIndex];
-        const questionMessage = { type: 'ai', text: currentQuestion.text, timestamp: currentQuestion.createdAt || new Date(), isQuestion: true };
-        const userMessage = { type: 'user', text: answer, timestamp: new Date() };
-        
-        // Reset chat to just current Q and user's answer
-        setChatHistory([questionMessage, userMessage]);
-        setSubmitting(true);
         const submittedAnswer = answer;
         setAnswer('');
+        setSubmitting(true);
+
+        // 1. Add user message
+        const userMsg = { 
+            type: 'user', 
+            text: submittedAnswer, 
+            timestamp: new Date(),
+            id: Date.now() + '-user'
+        };
+        
+        // We only show the current interaction for clarity in the main view
+        // But we keep history in the full scroll
+        setChatHistory(prev => [...prev, userMsg]);
 
         try {
-            const res = await submitAnswer(sessionId, {
-                questionId: currentQuestion._id,
-                answer: submittedAnswer
+            const token = localStorage.getItem('accessToken');
+            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api/v1';
+            const response = await fetch(`${baseUrl}/sessions/${sessionId}/answer-stream`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    questionId: currentQuestion._id,
+                    answer: submittedAnswer
+                })
             });
 
-            const feedbackMessage = {
-                type: 'ai',
-                text: res.data.feedback.analysis,
-                timestamp: new Date(),
-                isFeedback: true,
-                score: res.data.feedback.score
-            };
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || errorData.message || 'Failed to submit answer');
+            }
 
-            const nextIndex = currentQuestionIndex + 1;
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            
+            let evaluationData = null;
+            let buffer = '';
 
-            // Update local questions state to reflect answer status
-            setQuestions(prev => prev.map((q, idx) => 
-                idx === currentQuestionIndex ? { ...q, answer: submittedAnswer } : q
-            ));
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
 
-            if (nextIndex < questions.length) {
-                const nextQuestionMessage = {
-                    type: 'ai',
-                    text: questions[nextIndex].text,
-                    timestamp: new Date(),
-                    isQuestion: true
-                };
-                setChatHistory([questionMessage, userMessage, feedbackMessage, nextQuestionMessage]);
-                setCurrentQuestionIndex(nextIndex);
-            } else {
-                setChatHistory([questionMessage, userMessage, feedbackMessage, {
-                    type: 'ai',
-                    text: "That was the last question! You've completed the interview session. You can view your full report in the feedback page.",
-                    timestamp: new Date(),
-                    isFinal: true
-                }]);
+                buffer += decoder.decode(value, { stream: true });
+                const parts = buffer.split('\n\n');
+                buffer = parts.pop(); // Keep the last partial event in the buffer
+
+                for (const part of parts) {
+                    const lines = part.split('\n');
+                    let eventType = null;
+                    let eventData = null;
+
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            eventType = line.replace('event: ', '').trim();
+                        } else if (line.startsWith('data: ')) {
+                            try {
+                                eventData = JSON.parse(line.replace('data: ', '').trim());
+                            } catch (e) {
+                                console.error('Failed to parse SSE data:', e);
+                            }
+                        }
+                    }
+
+                    if (eventType && eventData) {
+                        if (eventType === 'evaluation') {
+                            evaluationData = eventData;
+                            setChatHistory(prev => [...prev, {
+                                type: 'ai',
+                                text: eventData.analysis,
+                                timestamp: new Date(),
+                                isFeedback: true,
+                                score: eventData.score,
+                                id: Date.now() + '-feedback'
+                            }]);
+                        } else if (eventType === 'nextQuestion') {
+                            setChatHistory(prev => [...prev, {
+                                type: 'ai',
+                                text: eventData.text,
+                                timestamp: new Date(),
+                                isQuestion: true,
+                                id: eventData._id
+                            }]);
+                            
+                            setQuestions(prev => {
+                                const updated = [...prev];
+                                updated[currentQuestionIndex].answer = submittedAnswer;
+                                updated[currentQuestionIndex].feedback = evaluationData;
+                                if (!updated.find(q => q._id === eventData._id)) {
+                                    updated.push(eventData);
+                                }
+                                return updated;
+                            });
+                            setCurrentQuestionIndex(prev => prev + 1);
+                        } else if (eventType === 'final') {
+                            setChatHistory(prev => [...prev, {
+                                type: 'ai',
+                                text: "That was the last question! You've completed the interview session.",
+                                timestamp: new Date(),
+                                isFinal: true,
+                                id: 'final-msg'
+                            }]);
+                            setQuestions(prev => {
+                                const updated = [...prev];
+                                updated[currentQuestionIndex].answer = submittedAnswer;
+                                updated[currentQuestionIndex].feedback = evaluationData;
+                                return updated;
+                            });
+                            setCurrentQuestionIndex(prev => prev + 1);
+                        } else if (eventType === 'error') {
+                            throw new Error(eventData.message || 'AI processing error');
+                        }
+                    }
+                }
             }
         } catch (err) {
-            toast.error('Failed to submit answer');
+            console.error('Submit stream error:', err);
+            toast.error(err.message === 'Failed to fetch' ? 'Connection lost. Please try again.' : `Error: ${err.message}`);
         } finally {
             setSubmitting(false);
         }
@@ -255,7 +366,7 @@ const MockInterview = () => {
             toast.error('Could not save all remaining questions');
         } finally {
             setSubmitting(false);
-            navigate('/');
+            navigate(`/feedback/${sessionId}`);
         }
     };
 
@@ -308,10 +419,14 @@ const MockInterview = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <div className="flex items-end justify-between">
-                                        <p className="text-2xl font-bold tracking-tight">{currentQuestionIndex} / {questions.length}</p>
-                                        <p className="text-xs font-semibold text-muted-foreground mb-1">{((currentQuestionIndex / questions.length) * 100).toFixed(0)}%</p>
+                                        <p className="text-2xl font-bold tracking-tight">
+                                            {isFinished ? 'Completed' : `${currentQuestionIndex} / ${questions.length}`}
+                                        </p>
+                                        <p className="text-xs font-semibold text-muted-foreground mb-1">
+                                            {isFinished ? '100%' : `${((currentQuestionIndex / questions.length) * 100).toFixed(0)}%`}
+                                        </p>
                                     </div>
-                                    <Progress value={(currentQuestionIndex / questions.length) * 100} className="h-2" />
+                                    <Progress value={isFinished ? 100 : (currentQuestionIndex / questions.length) * 100} className="h-2" />
                                 </div>
                             </div>
                         </div>
@@ -330,9 +445,9 @@ const MockInterview = () => {
                                         onClick={() => i < currentQuestionIndex ? setSelectedPastQuestion(i) : null}
                                         className={cn(
                                             "w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm ring-offset-background",
-                                            i === currentQuestionIndex ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110 z-10" :
+                                            (i === currentQuestionIndex && !isFinished) ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110 z-10" :
                                             i < currentQuestionIndex ? (
-                                                `cursor-pointer hover:opacity-80 hover:scale-110 ${questions[i].answer === '__SKIPPED__' ? "bg-red-500 text-white" : "bg-green-500 text-white"}`
+                                                `cursor-pointer hover:opacity-80 hover:scale-110 ${questions[i].answer === '__SKIPPED__' ? "bg-red-500 text-white" : (questions[i].answer ? "bg-green-500 text-white" : "bg-muted/50 text-muted-foreground")}`
                                             ) : "bg-muted/50 text-muted-foreground border border-border/50"
                                         )}
                                     >
@@ -344,6 +459,14 @@ const MockInterview = () => {
                     </ScrollArea>
 
                     <div className="p-6 pt-0 space-y-3">
+                        {isFinished && (
+                            <Button 
+                                onClick={() => navigate(`/feedback/${sessionId}`)} 
+                                className="w-full bg-primary text-primary-foreground hover:opacity-90 font-bold shadow-lg shadow-primary/20 h-11 rounded-xl mb-2"
+                            >
+                                <Award size={18} className="mr-2" /> View Full Report
+                            </Button>
+                        )}
                         <div className="space-y-2.5 p-4 bg-muted/10 rounded-2xl border border-border/40">
                             <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium">
                                 <div className="w-2.5 h-2.5 rounded-full bg-muted/50 border border-border/50" /> Not Visited
@@ -366,37 +489,45 @@ const MockInterview = () => {
                     <ScrollArea ref={scrollAreaRef} className="flex-1 p-8">
                         <div className="max-w-4xl mx-auto space-y-8">
                             {chatHistory.map((msg, i) => (
-                                <div key={i} className={cn("flex w-full", msg.type === 'user' ? "justify-end" : "justify-start")}>
-                                    <Card className={cn(
-                                        "max-w-[80%] border-border/40 shadow-sm transition-all animate-in fade-in slide-in-from-bottom-2 duration-500",
-                                        msg.type === 'user' ? "bg-primary text-primary-foreground border-none ring-4 ring-primary/5" : "bg-card/90",
-                                        msg.isFeedback && `border-l-4 ${getScoreBorderColor(msg.score)}`,
-                                        msg.isQuestion && "border-primary/30 bg-primary/[0.03]"
-                                    )}>
-                                        <CardContent className="p-5 space-y-4">
-                                            <p className="leading-relaxed whitespace-pre-wrap text-[15px]">{msg.text}</p>
-                                            
-                                            {msg.isFeedback && (
-                                                <Badge variant="outline" className={cn("font-bold px-3 py-1", getScoreBadgeClass(msg.score))}>
-                                                    Score: {msg.score}/10
-                                                </Badge>
-                                            )}
+                                <div key={msg.id || i} className={cn("flex w-full gap-3", msg.type === 'user' ? "flex-row-reverse" : "flex-row")}>
+                                    <ChatAvatar type={msg.type} />
+                                    <div className={cn("flex flex-col gap-1.5 max-w-[80%]", msg.type === 'user' ? "items-end" : "items-start")}>
+                                        <Card className={cn(
+                                            "border-border/40 shadow-sm transition-all animate-in fade-in slide-in-from-bottom-2 duration-500",
+                                            msg.type === 'user' ? "bg-primary text-primary-foreground border-none" : "bg-card/90",
+                                            msg.isFeedback && `border-l-4 ${getScoreBorderColor(msg.score)} shadow-md`,
+                                            msg.isQuestion && "border-primary/20 bg-primary/[0.02]"
+                                        )}>
+                                            <CardContent className="p-4 space-y-3">
+                                                <p className="leading-relaxed whitespace-pre-wrap text-[14.5px] font-medium tracking-tight">
+                                                    {msg.text}
+                                                </p>
+                                                
+                                                {msg.isFeedback && (
+                                                    <div className="flex items-center gap-3 pt-1">
+                                                        <Badge variant="outline" className={cn("font-bold px-2.5 py-0.5 text-[11px]", getScoreBadgeClass(msg.score))}>
+                                                            Score: {msg.score}/10
+                                                        </Badge>
+                                                    </div>
+                                                )}
 
-                                            {msg.isFinal && (
-                                                <Button size="lg" onClick={() => navigate(`/feedback/${sessionId}`)} className="w-full mt-4 bg-primary text-primary-foreground hover:opacity-90 font-bold shadow-lg shadow-primary/20">
-                                                    View Full Performance Report
-                                                </Button>
-                                            )}
-                                        </CardContent>
-                                    </Card>
+                                                {msg.isFinal && (
+                                                    <Button size="sm" onClick={() => navigate(`/feedback/${sessionId}`)} className="w-full mt-2 bg-primary text-primary-foreground hover:opacity-90 font-bold shadow-lg shadow-primary/10 h-9">
+                                                        Full Performance Report
+                                                    </Button>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                        <span className="text-[10px] font-bold text-muted-foreground/60 px-1 uppercase tracking-tighter">
+                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
                                 </div>
                             ))}
                             {submitting && (
-                                <div className="flex justify-start">
-                                    <div className="bg-muted/40 p-5 rounded-2xl border border-border/50 animate-pulse flex items-center gap-3 shadow-sm">
-                                        <Loader2 className="animate-spin text-primary" size={20} />
-                                        <span className="text-sm font-semibold tracking-tight">AI is evaluating your response...</span>
-                                    </div>
+                                <div className="flex flex-row gap-3">
+                                    <ChatAvatar type="ai" />
+                                    <TypingIndicator />
                                 </div>
                             )}
                         </div>

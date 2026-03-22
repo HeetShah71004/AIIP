@@ -15,6 +15,14 @@ const questionBankSchema = new mongoose.Schema({
     required: true,
     enum: ['Easy', 'Medium', 'Hard']
   },
+  roleLevel: {
+    type: String,
+    enum: ['Junior', 'Mid', 'Senior', 'Staff']
+  },
+  interviewRound: {
+    type: String,
+    enum: ['Phone Screen', 'Technical', 'System Design', 'Behavioral']
+  },
   companyTags: [String],
   createdAt: {
     type: Date,

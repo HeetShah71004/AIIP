@@ -4,6 +4,17 @@ import { Award, CheckCircle, XCircle, Lightbulb, ChevronLeft, ChevronRight, Chev
 import { getSession } from '../api/interviewApi';
 import api from '../api/client';
 import toast from 'react-hot-toast';
+import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler, Tooltip as ChartTooltip, Legend } from 'chart.js';
+import { Radar } from 'react-chartjs-2';
+
+ChartJS.register(
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  ChartTooltip,
+  Legend
+);
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Button } from "@/components/ui/button"
 import {
@@ -59,6 +70,55 @@ const InterviewFeedback = () => {
 
     const { session, questions } = data;
     const totalQuestions = questions.length;
+
+    const answeredQs = questions.filter(q => q.answer !== '__SKIPPED__' && q.feedback);
+    const avgClarity = answeredQs.length ? answeredQs.reduce((acc, q) => acc + (q.feedback.clarity || 0), 0) / answeredQs.length : 0;
+    const avgDepth = answeredQs.length ? answeredQs.reduce((acc, q) => acc + (q.feedback.depth || 0), 0) / answeredQs.length : 0;
+    const avgRelevance = answeredQs.length ? answeredQs.reduce((acc, q) => acc + (q.feedback.relevance || 0), 0) / answeredQs.length : 0;
+
+    const radarData = {
+        labels: ['Communication', 'Technical Depth', 'Structure'],
+        datasets: [{
+            label: 'Skill Score',
+            data: [avgClarity, avgDepth, avgRelevance],
+            backgroundColor: 'rgba(99, 102, 241, 0.2)',
+            borderColor: 'rgba(99, 102, 241, 1)',
+            pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgba(99, 102, 241, 1)',
+            borderWidth: 2,
+        }]
+    };
+
+    const radarOptions = {
+        scales: {
+            r: {
+                beginAtZero: true,
+                max: 10,
+                ticks: { display: false, stepSize: 2 },
+                grid: { color: 'rgba(15, 23, 42, 0.1)' },
+                angleLines: { color: 'rgba(15, 23, 42, 0.1)' },
+                pointLabels: {
+                    color: '#475569',
+                    font: { size: 12, weight: 'bold' }
+                }
+            }
+        },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                titleColor: '#ffffff',
+                bodyColor: '#e2e8f0',
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1,
+                padding: 10,
+                displayColors: false
+            }
+        },
+        maintainAspectRatio: false
+    };
 
     const nextSlide = () => setCurrentSlide(prev => (prev + 1) % totalQuestions);
     const prevSlide = () => setCurrentSlide(prev => (prev - 1 + totalQuestions) % totalQuestions);
@@ -139,6 +199,16 @@ const InterviewFeedback = () => {
                     </div>
                 </div>
             </header>
+
+            <Card className="border-border/50 shadow-sm overflow-hidden text-center lg:w-2/3 mx-auto">
+                <CardHeader className="pb-2">
+                    <CardTitle>Skill Dimensions</CardTitle>
+                    <CardDescription>Average performance across communication, technical depth, and structure</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px] relative w-full">
+                    <Radar data={radarData} options={radarOptions} />
+                </CardContent>
+            </Card>
 
             <div className="space-y-4">
                 <div className="flex justify-between items-end px-2">

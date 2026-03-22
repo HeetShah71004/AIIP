@@ -15,7 +15,7 @@ export const getAnalyticsSummary = async (req, res) => {
       .sort({ completedAt: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .select('score createdAt completedAt parsedData');
+      .select('score createdAt completedAt parsedData company roleLevel interviewRound');
 
     // 2. Average score per category (fixed aggregation with QuestionBank join)
     const categoryStats = await Question.aggregate([
@@ -46,8 +46,15 @@ export const getAnalyticsSummary = async (req, res) => {
       { $unwind: '$bankData' },
       {
         $group: {
-          _id: '$bankData.category',
-          topScore: { $avg: '$feedback.score' },
+          _id: { session: '$sessionData._id', category: '$bankData.category' },
+          sessionCategoryScore: { $avg: '$feedback.score' }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.category',
+          topScore: { $max: '$sessionCategoryScore' },
+          avgScore: { $avg: '$sessionCategoryScore' },
           count: { $sum: 1 }
         }
       }
@@ -215,3 +222,4 @@ export const getSkillGap = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

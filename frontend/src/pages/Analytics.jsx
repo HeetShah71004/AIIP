@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title as ChartTitle, Tooltip as ChartTooltip, Legend } from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ChartTitle,
+  ChartTooltip,
+  Legend
+);
 import { TrendingUp, Award, Calendar, Target } from 'lucide-react';
 import api from '../api/client';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -62,6 +73,52 @@ const Analytics = () => {
     name: c._id || 'General',
     score: parseFloat((c.topScore || c.avgScore || 0).toFixed(1))
   }));
+
+  const chartJsBarData = {
+    labels: barData.map(d => d.name),
+    datasets: [
+      {
+        label: 'Score',
+        data: barData.map(d => d.score),
+        backgroundColor: barData.map((_, i) => COLORS[i % COLORS.length]),
+        borderRadius: 6,
+        barPercentage: 0.6,
+      }
+    ]
+  };
+
+  const chartJsBarOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 10,
+        ticks: { stepSize: 2, color: '#64748b' },
+        grid: { color: 'rgba(15, 23, 42, 0.1)', drawBorder: false }
+      },
+      x: {
+        ticks: { color: '#64748b', font: { size: 11 } },
+        grid: { display: false, drawBorder: false }
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleColor: '#ffffff',
+        bodyColor: '#e2e8f0',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        padding: 10,
+        boxPadding: 4,
+        displayColors: false,
+        callbacks: {
+          label: (context) => `Score: ${context.parsed.y}/10`
+        }
+      }
+    }
+  };
 
   return (
     <div className="container max-w-7xl mx-auto px-4 py-8 space-y-8">
@@ -181,10 +238,14 @@ const Analytics = () => {
                         boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
                     }}
                     cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }}
-                    itemStyle={{ color: 'hsl(var(--primary))', fontWeight: 'bold' }}
+                    itemStyle={{ color: 'hsl(var(--primary))', fontWeight: 'bold', textTransform: 'capitalize' }}
                     labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px', fontSize: '10px' }}
                     labelFormatter={(label, payload) => {
                       return payload?.[0]?.payload?.fullDate || label;
+                    }}
+                    formatter={(value) => {
+                      const isMax = value === maxScoreInTrend && value > 0;
+                      return [value, isMax ? 'Top Score' : 'Score'];
                     }}
                   />
                   <Line 
@@ -232,42 +293,8 @@ const Analytics = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} margin={{ bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={11} 
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12} 
-                    domain={[0, 10]}
-                    ticks={[0, 2, 4, 6, 8, 10]}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                        background: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))', 
-                        borderRadius: 'var(--radius)',
-                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
-                    }}
-                    labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold', marginBottom: '8px' }}
-                    cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
-                  />
-                  <Bar name="Top Score" dataKey="score" radius={[6, 6, 0, 0]} barSize={40}>
-                    {barData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="h-[350px] relative w-full">
+              <Bar options={chartJsBarOptions} data={chartJsBarData} />
             </div>
           </CardContent>
         </Card>
