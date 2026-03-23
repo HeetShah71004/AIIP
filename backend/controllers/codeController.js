@@ -9,6 +9,15 @@ const LANGUAGE_CONFIG = {
   csharp: 'cs'
 };
 
+const JUDGE0_LANGUAGE_IDS = {
+  javascript: 63,
+  python: 71,
+  java: 62,
+  cpp: 54,
+  go: 60,
+  csharp: 51
+};
+
 const PISTON_INSTANCES = [
   'https://piston.codes/api/v2/execute',
   'https://piston.p-node.com/api/v2/execute',
@@ -32,6 +41,56 @@ export const executeCode = async (req, res) => {
     if (language.toLowerCase() === 'java') {
       // Improved Java class replacement: handles newlines and different spacing
       processedCode = code.replace(/public\s+class\s+([a-zA-Z_$][a-zA-Z\d_$]*)/, 'public class Main');
+    }
+
+    // 0. Try Judge0 (New Primary)
+    const judge0Host = process.env.JUDGE0_HOST || 'judge0-ce.p.rapidapi.com';
+    const judge0Key = process.env.JUDGE0_KEY;
+
+    if (judge0Key) {
+      try {
+        console.log('Trying Judge0...');
+        const judge0Res = await fetch(`https://${judge0Host}/submissions?base64_encoded=false&wait=true`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-rapidapi-host': judge0Host,
+            'x-rapidapi-key': judge0Key
+          },
+          body: JSON.stringify({
+            source_code: processedCode,
+            language_id: JUDGE0_LANGUAGE_IDS[language.toLowerCase()],
+            stdin: input
+          }),
+          signal: AbortSignal.timeout(10000)
+        });
+
+        const data = await judge0Res.json();
+        if (data && data.status && data.status.id <= 3) { // 3 means "Accepted"
+          return res.status(200).json({
+            success: true,
+            data: {
+              stdout: data.stdout || "",
+              stderr: data.stderr || data.compile_output || "",
+              output: data.stdout || data.stderr || data.compile_output || (data.status.id === 3 ? "Process finished successfully" : ""),
+              code: data.status.id === 3 ? 0 : 1
+            }
+          });
+        } else if (data && data.status) {
+          // If execution happened but errored (Runtime Error, TLE, etc.)
+          return res.status(200).json({
+            success: true,
+            data: {
+              stdout: data.stdout || "",
+              stderr: data.stderr || data.compile_output || data.status.description,
+              output: data.status.description + (data.stderr ? "\n" + data.stderr : ""),
+              code: 1
+            }
+          });
+        }
+      } catch (e) {
+        console.log('Judge0 failed/blocked:', e.message);
+      }
     }
 
     // 1. Try CodeX first
