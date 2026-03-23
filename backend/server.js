@@ -23,6 +23,7 @@ import resume from './routes/resume.js';
 import questions from './routes/questionRoutes.js';
 import sessions from './routes/sessionRoutes.js';
 import analytics from './routes/analyticsRoutes.js';
+import code from './routes/codeRoutes.js';
 
 // Mount routers
 app.use('/api/v1/auth', auth);
@@ -30,6 +31,7 @@ app.use('/api/v1/resume', resume);
 app.use('/api/v1/questions', questions);
 app.use('/api/v1/sessions', sessions);
 app.use('/api/v1/analytics', analytics);
+app.use('/api/v1/code', code);
 
 app.use(errorHandler);
 

@@ -32,7 +32,13 @@ export const startSession = async (req, res) => {
       const matchQuery = {};
       if (company) matchQuery.companyTags = { $in: [company] };
       if (roleLevel) matchQuery.roleLevel = roleLevel;
-      if (interviewRound) matchQuery.interviewRound = interviewRound;
+      if (interviewRound) {
+          if (interviewRound === 'Coding') {
+              matchQuery.type = 'Coding';
+          } else {
+              matchQuery.interviewRound = interviewRound;
+          }
+      }
       if (category) matchQuery.category = category;
       if (difficulty) matchQuery.difficulty = difficulty;
 
@@ -48,13 +54,15 @@ export const startSession = async (req, res) => {
           
           // Save the generated questions back to QuestionBank to enrich the DB
           const newBankQuestions = await Promise.all(generatedTextArray.map(async text => {
+             const qt = interviewRound === 'Coding' ? 'Coding' : 'Technical';
              return await QuestionBank.create({
                 text,
                 category: category || 'Fullstack',
                 difficulty: difficulty || 'Medium',
                 companyTags: company ? [company] : [],
                 roleLevel,
-                interviewRound
+                interviewRound,
+                type: qt
              });
           }));
           bankQuestions = [...bankQuestions, ...newBankQuestions];
@@ -63,7 +71,12 @@ export const startSession = async (req, res) => {
         }
       }
 
-      initialQuestions = bankQuestions.map(bq => ({ text: bq.text, bankId: bq._id }));
+      initialQuestions = bankQuestions.map(bq => ({ 
+        text: bq.text, 
+        bankId: bq._id,
+        type: bq.type,
+        codeTemplate: bq.codeTemplate
+      }));
     }
 
     // Create new session
@@ -83,7 +96,9 @@ export const startSession = async (req, res) => {
         Question.create({
           session: session._id,
           text: q.text,
-          questionBankId: q.bankId
+          questionBankId: q.bankId,
+          type: q.type || 'Behavioral',
+          codeTemplate: q.codeTemplate
         })
       );
       await Promise.all(questionPromises);
@@ -180,7 +195,11 @@ export const submitAnswer = async (req, res) => {
     if (nextIndex < session.totalQuestions) {
         let followUpText;
         if (answer === '__SKIPPED__' || evaluation.score === 0) {
-            followUpText = "It seems we had a bit of a disconnect there. Let's try a fresh one: Can you tell me about a time you had to learn a new technology quickly?";
+            if (session.interviewRound === 'Coding') {
+                followUpText = "Let's try a different coding challenge: Write a function to check if a string is a palindrome. Consider edge cases like spaces and punctuation.";
+            } else {
+                followUpText = "It seems we had a bit of a disconnect there. Let's try a fresh one: Can you tell me about a time you had to learn a new technology quickly?";
+            }
         } else {
             // Generate follow-up question
             followUpText = await generateFollowUpQuestion(question.text, answer, evaluation);
@@ -191,11 +210,13 @@ export const submitAnswer = async (req, res) => {
         
         if (nextQuestion) {
             nextQuestion.text = followUpText;
+            nextQuestion.type = session.interviewRound === 'Coding' ? 'Coding' : 'Technical';
             await nextQuestion.save();
         } else {
             await Question.create({
                 session: session._id,
-                text: followUpText
+                text: followUpText,
+                type: session.interviewRound === 'Coding' ? 'Coding' : 'Technical'
             });
         }
     }
@@ -281,7 +302,11 @@ export const submitAnswerStream = async (req, res) => {
       
       let followUpText;
       if (answer === '__SKIPPED__' || evaluation.score === 0) {
-        followUpText = "It seems we had a bit of a disconnect there. Let's try a fresh one: Can you tell me about a time you had to learn a new technology quickly?";
+        if (session.interviewRound === 'Coding') {
+          followUpText = "Let's try a different coding challenge: Write a function to check if a string is a palindrome. Consider edge cases like spaces and punctuation.";
+        } else {
+          followUpText = "It seems we had a bit of a disconnect there. Let's try a fresh one: Can you tell me about a time you had to learn a new technology quickly?";
+        }
       } else {
         followUpText = await generateFollowUpQuestion(question.text, answer, evaluation);
       }
@@ -290,9 +315,14 @@ export const submitAnswerStream = async (req, res) => {
       let nextQuestion = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
       if (nextQuestion) {
         nextQuestion.text = followUpText;
+        nextQuestion.type = session.interviewRound === 'Coding' ? 'Coding' : 'Technical';
         await nextQuestion.save();
       } else {
-        nextQuestion = await Question.create({ session: session._id, text: followUpText });
+        nextQuestion = await Question.create({ 
+          session: session._id, 
+          text: followUpText,
+          type: session.interviewRound === 'Coding' ? 'Coding' : 'Technical'
+        });
       }
 
       // 5. Stream the next question

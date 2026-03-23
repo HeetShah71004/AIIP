@@ -309,9 +309,16 @@ export const generateTargetedQuestions = async (company, roleLevel, interviewRou
     Role Level: ${roleLevel || 'Mid-Level'}
     Interview Round: ${interviewRound || 'Technical'}
     
+    SPECIAL INSTRUCTION FOR CODING ROUND:
+    If Interview Round is "Coding", generate PURE coding challenges (e.g., "Implement a LRU cache", "Reverse a linked list"). 
+    The question should be a clear problem statement.
+
     FEW-SHOT EXAMPLE:
     Round: "System Design"
-    Question: "How would you design a rate-limiter for a public API that handles 100k requests per second?"
+    Question: "How would you design a rate-limiter for a public API?"
+    
+    Round: "Coding"
+    Question: "Write a function to find the longest substring without repeating characters."
     
     Provide the result in JSON format with exactly the following field:
     - questions (array of strings)
@@ -338,12 +345,21 @@ export const generateTargetedQuestions = async (company, roleLevel, interviewRou
   }
 
   // Fallback to generic questions if AI fails
+  if (interviewRound === 'Coding') {
+    return [
+      "Write a function to implement a binary search on a sorted array.",
+      "Given a binary tree, find its maximum depth.",
+      "Implement a basic stack using an array.",
+      "Merge two sorted linked lists into one.",
+      "Check if a given string is an anagram of another."
+    ].slice(0, totalQuestions);
+  }
   return [
     `Tell me about your experience related to a ${roleLevel || 'Mid'} level role.`,
     `How would you design a highly scalable system for ${company || 'this company'}?`,
     "What is the most difficult technical challenge you have faced and how did you resolve it?",
-    "How do you handle disagreements with stakeholders or team members?",
-    "Explain an algorithm to traverse a binary tree and find the lowest common ancestor."
+    "What is your approach to teamwork?",
+    "Explain an algorithm to traverse a binary tree."
   ].slice(0, totalQuestions);
 };
 

@@ -52,7 +52,7 @@ const Navbar = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user.avatar} alt={user.name || 'User'} />
+                  <AvatarImage src={user.avatar} alt={user.name || 'User'} referrerPolicy="no-referrer" />
                   <AvatarFallback className="bg-primary/10 text-primary">
                     {(user.name || user.email)?.charAt(0).toUpperCase() || <UserIcon size={18} />}
                   </AvatarFallback>

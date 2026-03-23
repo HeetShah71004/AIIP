@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, Timer, Award, CheckCircle, ChevronLeft, Loader2, XCircle, AlertCircle, LayoutGrid, User, Bot } from 'lucide-react';
+import { Send, Timer, Award, CheckCircle, ChevronLeft, Loader2, XCircle, AlertCircle, LayoutGrid, User, Bot, Play, Code2, Terminal } from 'lucide-react';
 import { getSession, submitAnswer, getQuestionsFromBank } from '../api/interviewApi';
+import api from '../api/client';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Editor from '@monaco-editor/react';
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -51,6 +53,12 @@ const MockInterview = () => {
     const [answer, setAnswer] = useState('');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [code, setCode] = useState('// Your code here');
+    const [language, setLanguage] = useState('javascript');
+    const [userInput, setUserInput] = useState('');
+    const [output, setOutput] = useState('');
+    const [isRunning, setIsRunning] = useState(false);
+    const [isCodingMode, setIsCodingMode] = useState(false);
     const [chatHistory, setChatHistory] = useState([]);
     const [timeLeft, setTimeLeft] = useState(1800);
     const [showSkipModal, setShowSkipModal] = useState(false);
@@ -135,6 +143,48 @@ const MockInterview = () => {
         return () => clearInterval(timer);
     }, []);
 
+    useEffect(() => {
+        if (questions[currentQuestionIndex]) {
+            setIsCodingMode(questions[currentQuestionIndex].type === 'Coding');
+            if (questions[currentQuestionIndex].type === 'Coding') {
+                setCode(questions[currentQuestionIndex].codeTemplate || '// Start coding here...');
+            } else {
+                setAnswer('');
+            }
+        }
+    }, [currentQuestionIndex, questions]);
+
+    const handleRunCode = async () => {
+        setIsRunning(true);
+        setOutput('Compiling and running...\n');
+        
+        try {
+            const res = await api.post('/code/execute', {
+                language,
+                code,
+                input: userInput
+            });
+
+            if (res.data.success) {
+                const { stdout, stderr, output: fullOutput } = res.data.data;
+                const timestamp = new Date().toLocaleTimeString();
+                
+                let simulatedOutput = `> [Success] Code executed successfully!\n> ${timestamp}\n`;
+                if (stdout) simulatedOutput += `\nSTDOUT:\n${stdout}`;
+                if (stderr) simulatedOutput += `\nSTDERR:\n${stderr}`;
+                if (!stdout && !stderr) simulatedOutput += `\n(No output produced)`;
+                
+                setOutput(simulatedOutput);
+            } else {
+                setOutput(`> [Error] ${res.data.message}`);
+            }
+        } catch (err) {
+            setOutput(`> [Error] Failed to connect to execution engine. ${err.response?.data?.message || err.message}`);
+        } finally {
+            setIsRunning(false);
+        }
+    };
+
     const handleSkip = async () => {
         if (submitting) return;
         setShowSkipModal(false);
@@ -185,7 +235,7 @@ const MockInterview = () => {
                     
                     setQuestions(updatedSessionData.questions);
                     setCurrentQuestionIndex(nextIndex);
-                    setSession(updatedSessionData);
+                    setSession(updatedSessionData.session);
                 }
             } else {
                 setChatHistory(prev => [...prev, {
@@ -211,16 +261,18 @@ const MockInterview = () => {
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e, customAnswer = null) => {
         e.preventDefault();
-        if (!answer.trim() || submitting) return;
+        const finalAnswer = customAnswer || answer;
+        if (!finalAnswer.trim() && !isCodingMode) return;
+        if (submitting) return;
 
         const currentQuestion = questions[currentQuestionIndex];
-        const submittedAnswer = answer;
+        const submittedAnswer = isCodingMode && !customAnswer ? `CODE SUBMITTED:\n\`\`\`${language}\n${code}\n\`\`\`\n\nEXPLANATION:\n${answer}` : finalAnswer;
+        
         setAnswer('');
         setSubmitting(true);
 
-        // 1. Add user message
         const userMsg = { 
             type: 'user', 
             text: submittedAnswer, 
@@ -530,6 +582,113 @@ const MockInterview = () => {
                                     <TypingIndicator />
                                 </div>
                             )}
+
+                            {isCodingMode && (
+                                <Card className="border-border/60 shadow-xl overflow-hidden mt-6 animate-in zoom-in-95 duration-300">
+                                    <div className="bg-muted px-4 py-2 border-b flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex gap-1.5">
+                                                <div className="w-3 h-3 rounded-full bg-red-400" />
+                                                <div className="w-3 h-3 rounded-full bg-amber-400" />
+                                                <div className="w-3 h-3 rounded-full bg-green-400" />
+                                            </div>
+                                            <Badge variant="secondary" className="px-2 py-0 h-5 text-[10px] font-mono">
+                                                {language.toUpperCase()}
+                                            </Badge>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <select 
+                                                value={language}
+                                                onChange={(e) => setLanguage(e.target.value)}
+                                                className="bg-background/20 text-xs border-none rounded px-2 h-7 focus:ring-0 cursor-pointer hover:bg-background/40 transition-colors"
+                                            >
+                                                <option value="javascript">JavaScript</option>
+                                                <option value="python">Python</option>
+                                                <option value="java">Java</option>
+                                                <option value="cpp">C++</option>
+                                            </select>
+                                            <Button size="sm" onClick={handleRunCode} disabled={isRunning} className="h-7 bg-green-600 hover:bg-green-700 text-white gap-1.5 px-3">
+                                                {isRunning ? <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Play size={14} fill="currentColor" />}
+                                                Run
+                                            </Button>
+                                            <Button 
+                                                size="sm" 
+                                                onClick={() => {
+                                                    const explanationArea = document.querySelector('textarea[placeholder*="explanation"]');
+                                                    if (explanationArea) {
+                                                        explanationArea.focus();
+                                                        explanationArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                        toast('Please provide a brief explanation of your logic to submit.', { icon: '📝' });
+                                                    }
+                                                }} 
+                                                disabled={submitting} 
+                                                className="h-7 bg-primary hover:opacity-90 text-primary-foreground gap-1.5 px-3 shadow-lg shadow-primary/20"
+                                            >
+                                                <CheckCircle size={14} />
+                                                Submit Answer
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <div className="h-[400px] border-b border-white/10">
+                                        <Editor
+                                            height="100%"
+                                            language={language}
+                                            theme="vs-dark"
+                                            value={code}
+                                            onChange={(val) => setCode(val)}
+                                            options={{
+                                                minimap: { enabled: false },
+                                                fontSize: 14,
+                                                lineNumbers: 'on',
+                                                roundedSelection: false,
+                                                scrollBeyondLastLine: false,
+                                                readOnly: submitting,
+                                                automaticLayout: true,
+                                                padding: { top: 16 }
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="bg-slate-950 flex flex-col h-[200px] overflow-hidden">
+                                        <div className="flex flex-1 overflow-hidden">
+                                            {/* Input Area */}
+                                            <div className="w-1/3 border-r border-white/10 flex flex-col">
+                                                <div className="px-3 py-1 bg-slate-900 flex items-center justify-between">
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Input (stdin)</span>
+                                                    <Terminal size={10} className="text-slate-600" />
+                                                </div>
+                                                <textarea
+                                                    value={userInput}
+                                                    onChange={(e) => setUserInput(e.target.value)}
+                                                    placeholder="Enter input here..."
+                                                    className="flex-1 w-full bg-transparent p-3 text-xs font-mono text-slate-300 focus:outline-none resize-none placeholder:text-slate-700"
+                                                />
+                                            </div>
+                                            
+                                            {/* Output Area */}
+                                            <div className="flex-1 flex flex-col bg-black/40">
+                                                <div className="px-3 py-1 bg-slate-900 border-l border-white/5 flex items-center justify-between">
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Output</span>
+                                                    <div className="flex gap-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
+                                                    </div>
+                                                </div>
+                                                <ScrollArea className="flex-1 p-3">
+                                                    <pre className="text-xs font-mono leading-relaxed">
+                                                        {output ? (
+                                                            <code className={output.includes('[Error]') ? 'text-red-400' : 'text-green-400'}>
+                                                                {output}
+                                                            </code>
+                                                        ) : (
+                                                            <span className="text-slate-700 italic">Click 'Run' to see results.</span>
+                                                        )}
+                                                    </pre>
+                                                </ScrollArea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Card>
+                            )}
                         </div>
                     </ScrollArea>
 
@@ -546,25 +705,39 @@ const MockInterview = () => {
                                 <XCircle size={26} strokeWidth={1.5} />
                             </Button>
                             
-                            <form onSubmit={handleSubmit} className="relative flex-1 group">
+                            <form onSubmit={(e) => {
+                                if (isCodingMode) {
+                                    e.preventDefault();
+                                    // Wrap code in a message
+                                    const codeMessage = `LANGUAGE: ${language}\n\nCODE:\n\`\`\`${language}\n${code}\n\`\`\`\n\nEXPLANATION:\n${answer}`;
+                                    handleSubmit(e, codeMessage);
+                                } else {
+                                    handleSubmit(e);
+                                }
+                            }} className="relative flex-1 group">
                                 <textarea
                                     className="w-full bg-background/60 backdrop-blur-sm border border-border/40 rounded-2xl px-6 py-4 pr-16 text-base focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all duration-300 resize-none min-h-[56px] max-h-48 shadow-sm group-hover:border-border/60"
                                     value={answer}
                                     onChange={(e) => setAnswer(e.target.value)}
-                                    placeholder="Type your professional answer here..."
+                                    placeholder={isCodingMode ? "Add a brief explanation of your logic... (required)" : "Type your professional answer here..."}
                                     disabled={submitting || currentQuestionIndex >= questions.length}
                                     rows={1}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' && !e.shiftKey) {
                                             e.preventDefault();
-                                            handleSubmit(e);
+                                            if (isCodingMode) {
+                                                const codeMessage = `LANGUAGE: ${language}\n\nCODE:\n\`\`\`${language}\n${code}\n\`\`\`\n\nEXPLANATION:\n${answer}`;
+                                                handleSubmit(e, codeMessage);
+                                            } else {
+                                                handleSubmit(e);
+                                            }
                                         }
                                     }}
                                 />
                                 <Button 
                                     size="icon" 
                                     className="absolute right-2.5 bottom-2.5 h-10 w-10 rounded-xl shadow-lg shadow-primary/20 transition-all duration-300 hover:scale-105 active:scale-95" 
-                                    disabled={!answer.trim() || submitting || currentQuestionIndex >= questions.length}
+                                    disabled={(!answer.trim() && !isCodingMode) || submitting || currentQuestionIndex >= questions.length}
                                     type="submit"
                                 >
                                     <Send size={18} />

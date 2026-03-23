@@ -223,3 +223,95 @@ export const getSkillGap = async (req, res) => {
   }
 };
 
+// Get advanced stats: Time-series, Percentile, Velocity
+export const getAdvancedStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1. Time-series Progress (Last 10 completed sessions)
+    const timeSeries = await Session.find({ user: userId, status: 'completed' })
+      .sort({ completedAt: 1 })
+      .limit(10)
+      .select('score completedAt');
+
+    // 2. Percentile Ranking
+    // Get average score of current user
+    const userAvgRes = await Session.aggregate([
+      { $match: { user: new mongoose.Types.ObjectId(userId), status: 'completed' } },
+      { $group: { _id: null, avg: { $avg: '$score' } } }
+    ]);
+    const userAvg = userAvgRes[0]?.avg || 0;
+
+    // Get average score across all users in the system
+    const systemAvgRes = await Session.aggregate([
+      { $match: { status: 'completed' } },
+      { $group: { _id: null, avg: { $avg: '$score' } } }
+    ]);
+    const systemAvg = systemAvgRes[0]?.avg || 0;
+
+    // A simple percentile heuristic for now: 
+    // (User Avg / System Avg) * 50 capped at 99. 
+    // If userAvg is 8 and systemAvg is 6, they are roughly at 66th percentile.
+    let percentile = systemAvg > 0 ? Math.min(99, Math.round((userAvg / (systemAvg * 1.5)) * 100)) : 50;
+    if (userAvg === 0) percentile = 0;
+
+    // 3. Skill Velocity (Improvement rate per session)
+    let velocity = 0;
+    if (timeSeries.length >= 2) {
+      const firstScore = timeSeries[0].score;
+      const lastScore = timeSeries[timeSeries.length - 1].score;
+      velocity = parseFloat(((lastScore - firstScore) / timeSeries.length).toFixed(2));
+    }
+
+    // 4. Radar Chart Dimensions (Clarity, Depth, Relevance)
+    const radarStats = await Question.aggregate([
+      {
+        $lookup: {
+          from: 'sessions',
+          localField: 'session',
+          foreignField: '_id',
+          as: 'sessionData'
+        }
+      },
+      { $unwind: '$sessionData' },
+      { 
+        $match: { 
+          'sessionData.user': new mongoose.Types.ObjectId(userId),
+          'sessionData.status': 'completed',
+          'feedback.score': { $exists: true, $ne: null }
+        } 
+      },
+      {
+        $group: {
+          _id: null,
+          avgClarity: { $avg: '$feedback.clarity' },
+          avgDepth: { $avg: '$feedback.depth' },
+          avgRelevance: { $avg: '$feedback.relevance' }
+        }
+      }
+    ]);
+
+    const stats = radarStats[0] || { avgClarity: 0, avgDepth: 0, avgRelevance: 0 };
+    const radarData = [
+      { subject: 'Clarity', A: stats.avgClarity || 0, fullMark: 10 },
+      { subject: 'Depth', A: stats.avgDepth || 0, fullMark: 10 },
+      { subject: 'Relevance', A: stats.avgRelevance || 0, fullMark: 10 },
+      { subject: 'Structure', A: (stats.avgClarity + stats.avgDepth) / 2 || 0, fullMark: 10 },
+      { subject: 'Communication', A: (stats.avgClarity + stats.avgRelevance) / 2 || 0, fullMark: 10 },
+    ];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        timeSeries,
+        percentile,
+        velocity,
+        radarData
+      }
+    });
+  } catch (error) {
+    console.error('Advanced Stats Error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

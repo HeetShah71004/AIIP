@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis 
+} from 'recharts';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title as ChartTitle, Tooltip as ChartTooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -25,13 +28,18 @@ import { Badge } from "@/components/ui/badge"
 
 const Analytics = () => {
   const [data, setData] = useState(null);
+  const [advancedData, setAdvancedData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const res = await api.get('/analytics/summary?limit=100');
-        setData(res.data.data);
+        const [sumRes, advRes] = await Promise.all([
+          api.get('/analytics/summary?limit=100'),
+          api.get('/analytics/advanced-stats')
+        ]);
+        setData(sumRes.data.data);
+        setAdvancedData(advRes.data.data);
       } catch (err) {
         console.error('Failed to fetch analytics');
       } finally {
@@ -196,6 +204,36 @@ const Analytics = () => {
         </Card>
       </div>
 
+      {advancedData && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="border-border/50 shadow-sm bg-gradient-to-br from-blue-500/5 to-transparent">
+            <CardContent className="p-6 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Global Percentile</p>
+                <h3 className="text-3xl font-bold">{advancedData.percentile}th <span className="text-sm font-normal text-muted-foreground">percentile</span></h3>
+                <p className="text-xs text-muted-foreground pt-1">You score higher than {advancedData.percentile}% of users.</p>
+              </div>
+              <div className="h-16 w-16 rounded-full border-4 border-blue-500/20 border-t-blue-500 flex items-center justify-center">
+                <span className="text-sm font-bold text-blue-600">{advancedData.percentile}%</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 shadow-sm bg-gradient-to-br from-green-500/5 to-transparent">
+            <CardContent className="p-6 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Skill Velocity</p>
+                <h3 className="text-3xl font-bold">{advancedData.velocity > 0 ? '+' : ''}{advancedData.velocity} <span className="text-sm font-normal text-muted-foreground">pts / session</span></h3>
+                <p className="text-xs text-muted-foreground pt-1">Rate of improvement over your recent sessions.</p>
+              </div>
+              <div className="p-3 rounded-full bg-green-500/10 text-green-600">
+                <TrendingUp size={24} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         <Card className="border-border/50 shadow-sm overflow-hidden">
           <CardHeader className="flex flex-row items-center gap-4 pb-8">
@@ -298,6 +336,45 @@ const Analytics = () => {
             </div>
           </CardContent>
         </Card>
+
+        {advancedData?.radarData && (
+          <Card className="border-border/50 shadow-sm overflow-hidden md:col-span-2 xl:col-span-1">
+            <CardHeader className="flex flex-row items-center gap-4 pb-8">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <Award size={20} />
+              </div>
+              <div>
+                <CardTitle>Skill Dimensions</CardTitle>
+                <CardDescription>Communication, depth, and structure</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={advancedData.radarData}>
+                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 10]} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                    <Radar
+                      name="User"
+                      dataKey="A"
+                      stroke="hsl(var(--primary))"
+                      fill="hsl(var(--primary))"
+                      fillOpacity={0.6}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        background: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))', 
+                        borderRadius: 'var(--radius)' 
+                      }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

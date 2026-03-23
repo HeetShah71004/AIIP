@@ -16,7 +16,7 @@ const TOP_COMPANIES = [
 ];
 
 const ROLE_LEVELS = ["Junior", "Mid", "Senior", "Staff"];
-const INTERVIEW_ROUNDS = ["Phone Screen", "Technical", "System Design", "Behavioral"];
+const INTERVIEW_ROUNDS = ["Phone Screen", "Technical", "System Design", "Behavioral", "Coding"];
 
 const CompanySelection = () => {
   const navigate = useNavigate();
@@ -44,7 +44,7 @@ const CompanySelection = () => {
     try {
       const res = await api.post('/sessions/start', {
         useResume: false,
-        totalQuestions: 5,
+        totalQuestions: selectedRound === 'Coding' ? 2 : 5,
         company: selectedCompany,
         roleLevel: selectedRole,
         interviewRound: selectedRound

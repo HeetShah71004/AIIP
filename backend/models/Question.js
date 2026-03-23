@@ -14,6 +14,12 @@ const questionSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  type: {
+    type: String,
+    enum: ['Behavioral', 'Technical', 'Coding'],
+    default: 'Behavioral'
+  },
+  codeTemplate: String,
   answer: String,
   feedback: {
     score: { type: Number, min: 0, max: 10 },

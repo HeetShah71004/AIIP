@@ -39,17 +39,23 @@ const buildGrid = (sessions) => {
   });
 
   const today = new Date();
-  // align start to Sunday
-  const startDate = new Date(today);
-  startDate.setDate(today.getDate() - WEEKS * 7 + 1);
+  const currentYear = today.getFullYear();
+  
+  // Start from Jan 1st of the current year
+  const startDate = new Date(currentYear, 0, 1);
+  // Align start to the first Sunday of the year or just start at Jan 1st
+  // To keep it consistent with the week-based grid, let's align to the previous Sunday
+  startDate.setDate(startDate.getDate() - startDate.getDay());
 
   const grid = [];
-  for (let w = 0; w < WEEKS; w++) {
+  // For a full year, we need approx 53 weeks
+  for (let w = 0; w < 53; w++) {
     const week = [];
     for (let d = 0; d < 7; d++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + w * 7 + d);
       const key = date.toISOString().split('T')[0];
+      // Only include if it's within the current year or slightly outside for padding
       week.push({ date: key, count: counts[key] || 0 });
     }
     grid.push(week);
@@ -71,9 +77,11 @@ const DAY_LABELS   = ['','Mon','','Wed','','Fri',''];
 const getMonthLabels = (grid) => {
   const labels = [];
   let lastMonth = -1;
+  const currentYear = new Date().getFullYear();
   grid.forEach((week, wi) => {
-    const monthOfFirstDay = new Date(week[0].date).getMonth();
-    if (monthOfFirstDay !== lastMonth) {
+    const date = new Date(week[0].date);
+    const monthOfFirstDay = date.getMonth();
+    if (monthOfFirstDay !== lastMonth && date.getFullYear() === currentYear) {
       labels.push({ wi, label: MONTH_LABELS[monthOfFirstDay] });
       lastMonth = monthOfFirstDay;
     }
@@ -123,6 +131,40 @@ const Profile = () => {
   const totalContribs = sessions.length;
   const formatDate = (d) => new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 
+  // Calculate dynamic span text
+  const getTimeSpanText = () => {
+    if (sessions.length === 0) return "yet";
+    
+    const dates = sessions.map(s => new Date(s.completedAt || s.createdAt).getTime());
+    const minDate = new Date(Math.min(...dates));
+    const today = new Date();
+    
+    // Difference in days
+    const diffDays = Math.ceil((today - minDate) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 365) return "in the last year";
+    
+    const currentYear = today.getFullYear();
+    const firstYear = minDate.getFullYear();
+    if (currentYear === firstYear && diffDays > 30) {
+        return `in ${currentYear}`;
+    }
+    
+    if (diffDays > 30) {
+        const months = Math.ceil(diffDays / 30);
+        return `in the last ${months} month${months > 1 ? 's' : ''}`;
+    }
+    
+    if (diffDays > 7) {
+        const weeks = Math.ceil(diffDays / 7);
+        return `in the last ${weeks} week${weeks > 1 ? 's' : ''}`;
+    }
+    
+    return "recently";
+  };
+
+  const spanText = getTimeSpanText();
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -134,7 +176,7 @@ const Profile = () => {
             {/* Avatar + Name */}
             <div className="space-y-3">
               <Avatar className="h-[230px] w-[230px] rounded-full border-2 border-border shadow-lg ring-4 ring-background mx-auto lg:mx-0">
-                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarImage src={user.avatar} alt={user.name} referrerPolicy="no-referrer" />
                 <AvatarFallback className="text-7xl rounded-full bg-muted">
                   {user.name?.charAt(0).toUpperCase() || <User size={60} />}
                 </AvatarFallback>
@@ -231,7 +273,7 @@ const Profile = () => {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold">
                       <span className="font-bold">{totalContribs} interview{totalContribs !== 1 ? 's' : ''}</span>
-                      <span className="text-muted-foreground font-normal"> in the last year</span>
+                      <span className="text-muted-foreground font-normal"> {spanText}</span>
                     </p>
                     <Badge variant="outline" className="text-[10px] gap-1">
                       <Flame size={10} className="text-orange-500" />

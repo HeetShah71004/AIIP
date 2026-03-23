@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Award, CheckCircle, XCircle, Lightbulb, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, Trash2 } from 'lucide-react';
+import { Award, CheckCircle, XCircle, Lightbulb, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, Trash2, Code2 } from 'lucide-react';
 import { getSession } from '../api/interviewApi';
 import api from '../api/client';
 import toast from 'react-hot-toast';
@@ -76,11 +76,14 @@ const InterviewFeedback = () => {
     const avgDepth = answeredQs.length ? answeredQs.reduce((acc, q) => acc + (q.feedback.depth || 0), 0) / answeredQs.length : 0;
     const avgRelevance = answeredQs.length ? answeredQs.reduce((acc, q) => acc + (q.feedback.relevance || 0), 0) / answeredQs.length : 0;
 
+    const avgCommunication = (avgClarity * 0.5 + avgRelevance * 0.5);
+    const avgStructure = (avgClarity * 0.7 + avgDepth * 0.3);
+
     const radarData = {
-        labels: ['Communication', 'Technical Depth', 'Structure'],
+        labels: ['Clarity', 'Depth', 'Relevance', 'Structure', 'Communication'],
         datasets: [{
             label: 'Skill Score',
-            data: [avgClarity, avgDepth, avgRelevance],
+            data: [avgClarity, avgDepth, avgRelevance, avgStructure, avgCommunication],
             backgroundColor: 'rgba(99, 102, 241, 0.2)',
             borderColor: 'rgba(99, 102, 241, 1)',
             pointBackgroundColor: 'rgba(99, 102, 241, 1)',
@@ -145,6 +148,40 @@ const InterviewFeedback = () => {
             return `${clean} Interview Performance`;
         }
         return 'Interview Performance';
+    };
+
+    const renderAnswer = (answer) => {
+        if (answer === '__SKIPPED__') return "This question was skipped";
+        if (answer.startsWith('CODE SUBMITTED:')) {
+            const codeMatch = answer.match(/CODE:\n```(.*?)\n([\s\S]*?)\n```/);
+            const explanationMatch = answer.match(/EXPLANATION:\n([\s\S]*)/);
+            
+            if (codeMatch) {
+                const lang = codeMatch[1];
+                const codeContent = codeMatch[2];
+                const explanation = explanationMatch ? explanationMatch[1] : '';
+                
+                return (
+                    <div className="space-y-4">
+                        <div className="rounded-lg overflow-hidden border border-border/40">
+                             <div className="bg-muted px-3 py-1.5 text-[10px] font-mono border-b border-border/40 flex justify-between items-center">
+                                <span className="text-primary font-bold">SOURCE CODE ({lang.toUpperCase()})</span>
+                                <Code2 size={14} className="text-muted-foreground" />
+                             </div>
+                             <pre className="p-4 bg-slate-950 text-slate-100 font-mono text-xs overflow-x-auto leading-relaxed">
+                                <code>{codeContent}</code>
+                             </pre>
+                        </div>
+                        {explanation && (
+                            <div className="italic text-muted-foreground pt-2 border-t border-border/10">
+                                {explanation}
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+        }
+        return answer;
     };
 
     const currentQ = questions[currentSlide];
@@ -245,8 +282,8 @@ const InterviewFeedback = () => {
                 <CardContent className="space-y-6">
                     <div className="space-y-2">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Your Response</p>
-                        <div className="p-4 rounded-xl bg-muted/40 border border-border/40 text-sm leading-relaxed italic text-muted-foreground">
-                            {currentQ.answer === '__SKIPPED__' ? "This question was skipped" : currentQ.answer}
+                        <div className="p-4 rounded-xl bg-muted/40 border border-border/40 text-sm leading-relaxed text-muted-foreground">
+                            {renderAnswer(currentQ.answer)}
                         </div>
                     </div>
 
