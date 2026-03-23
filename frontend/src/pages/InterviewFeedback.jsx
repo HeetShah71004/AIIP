@@ -16,6 +16,7 @@ ChartJS.register(
   Legend
 );
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useTheme } from '../context/ThemeContext';
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -51,6 +52,8 @@ const InterviewFeedback = () => {
     const [loading, setLoading] = useState(true);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
 
     useEffect(() => {
         const fetchData = async () => {
@@ -84,12 +87,12 @@ const InterviewFeedback = () => {
         datasets: [{
             label: 'Skill Score',
             data: [avgClarity, avgDepth, avgRelevance, avgStructure, avgCommunication],
-            backgroundColor: 'rgba(99, 102, 241, 0.2)',
-            borderColor: 'rgba(99, 102, 241, 1)',
-            pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+            backgroundColor: isDark ? 'rgba(20, 184, 166, 0.2)' : 'rgba(13, 148, 136, 0.2)',
+            borderColor: isDark ? '#14b8a6' : '#0d9488',
+            pointBackgroundColor: isDark ? '#14b8a6' : '#0d9488',
             pointBorderColor: '#fff',
             pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: 'rgba(99, 102, 241, 1)',
+            pointHoverBorderColor: isDark ? '#14b8a6' : '#0d9488',
             borderWidth: 2,
         }]
     };
@@ -100,10 +103,10 @@ const InterviewFeedback = () => {
                 beginAtZero: true,
                 max: 10,
                 ticks: { display: false, stepSize: 2 },
-                grid: { color: 'rgba(15, 23, 42, 0.1)' },
-                angleLines: { color: 'rgba(15, 23, 42, 0.1)' },
+                grid: { color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' },
+                angleLines: { color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' },
                 pointLabels: {
-                    color: '#475569',
+                    color: isDark ? '#94a3b8' : '#475569',
                     font: { size: 12, weight: 'bold' }
                 }
             }

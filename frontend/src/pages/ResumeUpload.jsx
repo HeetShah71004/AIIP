@@ -87,16 +87,16 @@ const ResumeUpload = () => {
   };
 
   return (
-    <div className="container max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <div className="container max-w-6xl mx-auto px-4 py-8 space-y-8 font-['Outfit'] dark:text-zinc-100">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-center sm:text-left">Upload Your Resume</h1>
-        <p className="text-muted-foreground text-lg text-center sm:text-left">
+        <h1 className="text-3xl font-bold tracking-tight text-center sm:text-left dark:text-zinc-50 dark:font-extrabold">Upload Your Resume</h1>
+        <p className="text-muted-foreground text-lg text-center sm:text-left dark:text-zinc-400">
           Let our AI analyze your experience to tailor your interview.
         </p>
       </div>
       
       <div className={`grid gap-8 ${parsedData ? 'lg:grid-cols-2' : 'max-w-2xl mx-auto w-full'}`}>
-        <Card className={`border-2 border-dashed border-border/60 transition-all ${!file ? 'hover:border-primary/50 hover:bg-muted/30' : ''}`}>
+        <Card className={`border-2 border-dashed border-border/60 dark:border-zinc-800/90 dark:bg-[#0d1117] transition-all ${!file ? 'hover:border-primary/50 hover:bg-muted/30 dark:hover:bg-zinc-900/60' : ''}`}>
           <CardContent className="p-8 sm:p-12 text-center">
             <input 
               type="file" 
@@ -112,10 +112,10 @@ const ResumeUpload = () => {
               </div>
               
               <div className="space-y-2">
-                <h3 className="text-xl font-semibold tracking-tight">
+                <h3 className="text-xl font-semibold tracking-tight dark:text-zinc-100">
                   {file ? file.name : 'Select or Drag & Drop'}
                 </h3>
-                <p className="text-sm text-muted-foreground">PDF or DOCX (max 5MB)</p>
+                <p className="text-sm text-muted-foreground dark:text-zinc-400">PDF or DOCX (max 5MB)</p>
               </div>
             </label>
 
@@ -134,7 +134,7 @@ const ResumeUpload = () => {
               <div className="mt-8 space-y-3">
                 <Progress value={progress} className={progress === 100 ? "h-2 bg-primary/20 animate-pulse" : "h-2"} />
                 {progress < 100 ? (
-                  <p className="text-sm font-medium text-muted-foreground">{progress}% Uploaded</p>
+                  <p className="text-sm font-medium text-muted-foreground dark:text-zinc-400">{progress}% Uploaded</p>
                 ) : (
                   <div className="flex items-center justify-center gap-2 text-sm font-bold text-primary">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -149,31 +149,31 @@ const ResumeUpload = () => {
         </Card>
 
         {parsedData && (
-          <Card className="border-border/50 shadow-md">
+          <Card className="border-border/50 dark:border-zinc-800/90 dark:bg-[#0d1117] shadow-md">
             <CardHeader className="flex flex-row items-center gap-4 pb-2">
               <div className="bg-green-500/10 p-2 rounded-full text-green-600">
                 <CheckCircle size={28} />
               </div>
               <div>
-                <CardTitle className="text-2xl">Parsed Successfully</CardTitle>
-                <CardDescription>We've analyzed your profile</CardDescription>
+                <CardTitle className="text-2xl dark:text-zinc-100">Parsed Successfully</CardTitle>
+                <CardDescription className="dark:text-zinc-400">We've analyzed your profile</CardDescription>
               </div>
             </CardHeader>
             <CardContent className="space-y-6 pt-4">
               <div className="p-5 rounded-xl bg-primary/5 border border-primary/10 space-y-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Identified Role</p>
+                  <p className="text-xs font-semibold text-muted-foreground dark:text-zinc-400 uppercase tracking-widest">Identified Role</p>
                   <p className="text-xl font-bold text-primary">{parsedData.developerTitle}</p>
                 </div>
                 
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Primary Stack</p>
-                  <p className="text-base font-medium">{parsedData.primaryStack}</p>
+                  <p className="text-xs font-semibold text-muted-foreground dark:text-zinc-400 uppercase tracking-widest">Primary Stack</p>
+                  <p className="text-base font-medium dark:text-zinc-100">{parsedData.primaryStack}</p>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Detected Skills</h3>
+                <h3 className="text-sm font-semibold text-muted-foreground dark:text-zinc-400 uppercase tracking-widest">Detected Skills</h3>
                 <div className="flex flex-wrap gap-2">
                   {parsedData.skills.map(s => (
                     <Badge key={s} variant="secondary" className="font-medium">{s}</Badge>
@@ -184,11 +184,11 @@ const ResumeUpload = () => {
               <Separator className="bg-border/50" />
 
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Key Projects</h3>
+                <h3 className="text-sm font-semibold text-muted-foreground dark:text-zinc-400 uppercase tracking-widest">Key Projects</h3>
                 <div className="grid gap-4">
                   {parsedData.projects.map((proj, i) => (
                     <div key={i} className="space-y-2">
-                      <p className="font-bold text-foreground">{proj.name}</p>
+                      <p className="font-bold text-foreground dark:text-zinc-100">{proj.name}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {proj.languages.map(lang => (
                           <Badge key={lang} variant="outline" className="text-[10px] px-1.5 py-0 border-primary/20 bg-primary/5 text-primary">

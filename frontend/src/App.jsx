@@ -1,11 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import ResumeUpload from './pages/ResumeUpload';
 import Profile from './pages/Profile';
@@ -13,6 +12,8 @@ import MockInterview from './pages/MockInterview';
 import InterviewFeedback from './pages/InterviewFeedback';
 import Analytics from './pages/Analytics';
 import CompanySelection from './pages/CompanySelection';
+import LandingPage from './pages/LandingPage';
+import Settings from './pages/Settings';
 import Navbar from './components/Navbar';
 import './index.css';
 
@@ -26,23 +27,15 @@ const AppContent = () => {
       <main className="min-h-screen">
         <Routes>
           <Route 
-            path="/login" 
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/signup" 
-            element={
-              <PublicRoute>
-                <Signup />
-              </PublicRoute>
-            } 
-          />
-          <Route 
             path="/" 
+            element={
+              <PublicRoute>
+                <LandingPage />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard" 
             element={
               <ProtectedRoute>
                 <Dashboard />
@@ -97,6 +90,14 @@ const AppContent = () => {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/settings" 
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </main>
     </>
@@ -106,10 +107,12 @@ const AppContent = () => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Toaster position="top-center" reverseOrder={false} />
-        <AppContent />
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <Toaster position="top-center" reverseOrder={false} />
+          <AppContent />
+        </Router>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

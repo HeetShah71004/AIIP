@@ -80,11 +80,11 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="container max-w-7xl mx-auto px-4 py-8 space-y-8">
+    <div className="container max-w-7xl mx-auto px-4 py-8 space-y-8 font-['Outfit'] dark:text-zinc-100">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">Welcome, {user?.name}</h1>
-          <p className="text-muted-foreground text-lg">Ready for your next interview?</p>
+          <h1 className="text-3xl font-bold tracking-tight dark:text-zinc-50 dark:font-extrabold">Welcome, {user?.name}</h1>
+          <p className="text-muted-foreground text-lg dark:text-zinc-400">Ready for your next interview?</p>
         </div>
         <div className="flex gap-3 shrink-0">
           <Button variant="outline" onClick={() => navigate('/company-prep')} className="gap-2">
@@ -97,50 +97,50 @@ const Dashboard = () => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20 border-border/50">
+        <Card className="transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20 border-border/50 dark:bg-[#0d1117] dark:border-zinc-800/90">
           <CardContent className="flex items-center gap-4 p-6">
             <div className="p-3 rounded-xl bg-primary/10 text-primary">
               <Trophy size={24} />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Sessions Completed</p>
-              <h3 className="text-3xl font-bold tracking-tight">{stats?.totalSessions || 0}</h3>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider dark:text-zinc-400">Sessions Completed</p>
+              <h3 className="text-3xl font-bold tracking-tight dark:text-zinc-100">{stats?.totalSessions || 0}</h3>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20 border-border/50">
+        <Card className="transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20 border-border/50 dark:bg-[#0d1117] dark:border-zinc-800/90">
           <CardContent className="flex items-center gap-4 p-6">
             <div className="p-3 rounded-xl bg-green-500/10 text-green-600">
               <Target size={24} />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Average Score</p>
-              <h3 className="text-3xl font-bold tracking-tight">{(stats?.avgOverallScore * 10).toFixed(0) || 0}%</h3>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider dark:text-zinc-400">Average Score</p>
+              <h3 className="text-3xl font-bold tracking-tight dark:text-zinc-100">{(stats?.avgOverallScore * 10).toFixed(0) || 0}%</h3>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20 border-border/50">
+        <Card className="transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20 border-border/50 dark:bg-[#0d1117] dark:border-zinc-800/90">
           <CardContent className="flex items-center gap-4 p-6">
             <div className="p-3 rounded-xl bg-red-500/10 text-red-600">
               <Zap size={24} />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Current Streak</p>
-              <h3 className="text-3xl font-bold tracking-tight">{stats?.streak || 0} Days</h3>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider dark:text-zinc-400">Current Streak</p>
+              <h3 className="text-3xl font-bold tracking-tight dark:text-zinc-100">{stats?.streak || 0} Days</h3>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold tracking-tight">Recent Activity</h2>
-        <Card className="border-border/50">
+        <h2 className="text-2xl font-bold tracking-tight dark:text-zinc-50 dark:font-extrabold">Recent Activity</h2>
+        <Card className="border-border/50 dark:bg-[#0d1117] dark:border-zinc-800/90">
           <CardContent className="p-0">
             {sessions.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-muted-foreground text-lg">No recent activity. Start an interview!</p>
+                <p className="text-muted-foreground text-lg dark:text-zinc-400">No recent activity. Start an interview!</p>
                 <Button variant="link" onClick={() => navigate('/upload')} className="mt-2">
                   Upload your resume to begin
                 </Button>
@@ -152,14 +152,14 @@ const Dashboard = () => {
                     <div
                       key={s._id}
                       onClick={() => navigate(`/feedback/${s._id}`)}
-                      className="flex justify-between items-center p-6 hover:bg-card hover:shadow-2xl hover:shadow-primary/10 cursor-pointer transition-all duration-300 group relative overflow-hidden hover:-translate-y-1 z-10"
+                      className="flex justify-between items-center p-6 hover:bg-card dark:hover:bg-zinc-900/70 hover:shadow-2xl hover:shadow-primary/10 cursor-pointer transition-all duration-300 group relative overflow-hidden hover:-translate-y-1 z-10"
                     >
                       <div className="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-primary to-primary/50 scale-y-0 group-hover:scale-y-100 transition-transform duration-500 origin-center" />
                       <div className="space-y-1">
-                        <p className="font-semibold group-hover:text-primary transition-colors line-clamp-1">
+                        <p className="font-semibold group-hover:text-primary dark:text-zinc-100 transition-colors line-clamp-1">
                           {formatJobTitle(s)}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground dark:text-zinc-400">
                           {new Date(s.completedAt || s.createdAt).toLocaleString(undefined, {
                             dateStyle: 'medium',
                             timeStyle: 'short'
@@ -175,11 +175,11 @@ const Dashboard = () => {
                               cx="28" cy="28" r="20" fill="transparent" stroke="currentColor" strokeWidth="4" 
                               strokeDasharray="125.6" 
                               strokeDashoffset={125.6 - ((s.score * 10) / 100) * 125.6} 
-                              className={`transition-all duration-1000 ease-out ${s.score >= 8 ? 'text-green-500' : s.score >= 5 ? 'text-orange-500' : 'text-red-500'}`} 
+                              className={`transition-all duration-1000 ease-out ${s.score >= 8 ? 'text-green-500 dark:text-emerald-400' : s.score >= 5 ? 'text-orange-500 dark:text-amber-400' : 'text-red-500 dark:text-rose-400'}`} 
                               strokeLinecap="round"
                             />
                           </svg>
-                          <span className={`absolute text-sm font-bold ${s.score >= 8 ? 'text-green-600' : s.score >= 5 ? 'text-orange-600' : 'text-red-600'}`}>
+                          <span className={`absolute text-sm font-bold ${s.score >= 8 ? 'text-green-600 dark:text-emerald-300' : s.score >= 5 ? 'text-orange-600 dark:text-amber-300' : 'text-red-600 dark:text-rose-300'}`}>
                             {(s.score * 10).toFixed(0)}%
                           </span>
                         </div>
@@ -189,8 +189,8 @@ const Dashboard = () => {
                   ))}
                 </div>
                 {sessions.length > 0 && (
-                  <div className="flex items-center justify-between px-6 py-4 bg-muted/20 border-t border-border">
-                    <p className="text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between px-6 py-4 bg-muted/20 dark:bg-zinc-900/40 border-t border-border dark:border-zinc-800/90">
+                    <p className="text-sm text-muted-foreground dark:text-zinc-400">
                       Page {currentPage} of {totalPages}
                     </p>
                     <div className="flex gap-2">

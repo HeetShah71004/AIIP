@@ -6,6 +6,7 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Editor from '@monaco-editor/react';
+import { useTheme } from '../context/ThemeContext';
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -64,6 +65,7 @@ const MockInterview = () => {
     const [showSkipModal, setShowSkipModal] = useState(false);
     const [showExitModal, setShowExitModal] = useState(false);
     const [selectedPastQuestion, setSelectedPastQuestion] = useState(null);
+    const { theme } = useTheme();
     const scrollAreaRef = useRef(null);
     const isFinished = chatHistory.some(m => m.isFinal);
 
@@ -633,7 +635,7 @@ const MockInterview = () => {
                                         <Editor
                                             height="100%"
                                             language={language}
-                                            theme="vs-dark"
+                                            theme={theme === 'dark' ? "vs-dark" : "vs-light"}
                                             value={code}
                                             onChange={(val) => setCode(val)}
                                             options={{
