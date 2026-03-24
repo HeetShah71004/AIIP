@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Trophy, Target, Zap, Play, ChevronRight, Trash2, Building2 } from 'lucide-react';
+import { Trophy, Target, Zap, Play, ChevronRight, Trash2, Building2, Code2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
 import {
@@ -237,6 +237,21 @@ const Dashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Floating Code Playground CTA */}
+      <div className="fixed bottom-8 right-8 z-40 animate-in slide-in-from-bottom-5 duration-700">
+        <Button 
+          onClick={() => navigate('/playground')}
+          size="lg"
+          className="rounded-full shadow-2xl hover:shadow-primary/30 hover:-translate-y-1 transition-all duration-300 h-14 px-6 gap-3 group bg-gradient-to-r from-primary to-primary/80"
+        >
+          <Code2 size={24} className="group-hover:rotate-12 transition-transform" />
+          <div className="flex flex-col items-start leading-tight">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary-foreground/80">Try the new</span>
+            <span className="text-sm font-extrabold">Code Playground</span>
+          </div>
+        </Button>
+      </div>
     </div>
   );
 };

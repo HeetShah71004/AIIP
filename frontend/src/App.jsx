@@ -14,16 +14,18 @@ import Analytics from './pages/Analytics';
 import CompanySelection from './pages/CompanySelection';
 import LandingPage from './pages/LandingPage';
 import Settings from './pages/Settings';
+import CodePlayground from './pages/CodePlayground';
 import Navbar from './components/Navbar';
 import './index.css';
 
 const AppContent = () => {
   const location = useLocation();
   const isInterviewPage = location.pathname.startsWith('/interview/');
+  const isPlaygroundPage = location.pathname.startsWith('/playground');
 
   return (
     <>
-      {!isInterviewPage && <Navbar />}
+      {!(isInterviewPage || isPlaygroundPage) && <Navbar />}
       <main className="min-h-screen">
         <Routes>
           <Route 
@@ -95,6 +97,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/playground" 
+            element={
+              <ProtectedRoute>
+                <CodePlayground />
               </ProtectedRoute>
             } 
           />

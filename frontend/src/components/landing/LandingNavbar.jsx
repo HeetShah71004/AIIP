@@ -16,7 +16,7 @@ const LandingNavbar = ({ onLogin, onSignup }) => {
   return (
     <nav 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'py-3 backdrop-blur-md bg-black/50 border-b border-white/[0.08]' : 'py-6 bg-transparent'
+        isScrolled ? 'py-3 backdrop-blur-md bg-white/85 dark:bg-black/50 border-b border-black/5 dark:border-white/[0.08] shadow-sm dark:shadow-none' : 'py-6 bg-transparent'
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">

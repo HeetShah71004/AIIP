@@ -8,13 +8,13 @@ const ThemeToggle = () => {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2.5 rounded-full bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 transition-all duration-300 group"
+      className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-300 group"
       aria-label="Toggle theme"
     >
       {theme === 'light' ? (
-        <Moon className="w-5 h-5 text-foreground transition-transform group-hover:-rotate-12" />
+        <Moon className="w-5 h-5 text-slate-600 transition-transform group-hover:-rotate-12" />
       ) : (
-        <Sun className="w-5 h-5 text-foreground transition-transform group-hover:rotate-45" />
+        <Sun className="w-5 h-5 text-zinc-400 transition-transform group-hover:rotate-45" />
       )}
     </button>
   );
