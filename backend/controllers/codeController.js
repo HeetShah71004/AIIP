@@ -24,21 +24,24 @@ const PISTON_INSTANCES = [
   'https://emkc.org/api/v2/piston/execute'
 ];
 
+const JUDGE0_PUBLIC_ENDPOINTS = [
+  'https://ce.judge0.com',
+  'https://extra-ce.judge0.com'
+];
+
 export const executeCode = async (req, res) => {
   try {
     const { language, code, input = "" } = req.body;
 
-    // Connectivity Check (Internal logging)
-    fetch('https://www.google.com', { signal: AbortSignal.timeout(2000) }).catch(() => {});
-
-    const langCode = LANGUAGE_CONFIG[language.toLowerCase()];
+    const normalizedLanguage = String(language || '').toLowerCase();
+    const langCode = LANGUAGE_CONFIG[normalizedLanguage];
     if (!langCode) {
       return res.status(400).json({ success: false, message: `Language ${language} not supported for real execution.` });
     }
 
     // Pre-process code (Java fix)
     let processedCode = code;
-    if (language.toLowerCase() === 'java') {
+    if (normalizedLanguage === 'java') {
       // Improved Java class replacement: handles newlines and different spacing
       processedCode = code.replace(/public\s+class\s+([a-zA-Z_$][a-zA-Z\d_$]*)/, 'public class Main');
     }
@@ -59,11 +62,15 @@ export const executeCode = async (req, res) => {
           },
           body: JSON.stringify({
             source_code: processedCode,
-            language_id: JUDGE0_LANGUAGE_IDS[language.toLowerCase()],
+            language_id: JUDGE0_LANGUAGE_IDS[normalizedLanguage],
             stdin: input
           }),
           signal: AbortSignal.timeout(10000)
         });
+
+        if (!judge0Res.ok) {
+          throw new Error(`Judge0 HTTP ${judge0Res.status}`);
+        }
 
         const data = await judge0Res.json();
         if (data && data.status && data.status.id <= 3) { // 3 means "Accepted"
@@ -76,7 +83,9 @@ export const executeCode = async (req, res) => {
               code: data.status.id === 3 ? 0 : 1
             }
           });
-        } else if (data && data.status) {
+        }
+
+        if (data && data.status) {
           // If execution happened but errored (Runtime Error, TLE, etc.)
           return res.status(200).json({
             success: true,
@@ -89,7 +98,57 @@ export const executeCode = async (req, res) => {
           });
         }
       } catch (e) {
-        console.log('Judge0 failed/blocked:', e.message);
+        console.log('Judge0 failed/blocked:', e.message || e);
+      }
+    }
+
+    // 0.1 Try public Judge0 endpoints (no API key)
+    for (const endpoint of JUDGE0_PUBLIC_ENDPOINTS) {
+      try {
+        console.log(`Trying public Judge0: ${endpoint}...`);
+        const judge0Res = await fetch(`${endpoint}/submissions?base64_encoded=false&wait=true`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            source_code: processedCode,
+            language_id: JUDGE0_LANGUAGE_IDS[normalizedLanguage],
+            stdin: input
+          }),
+          signal: AbortSignal.timeout(10000)
+        });
+
+        if (!judge0Res.ok) {
+          throw new Error(`Judge0 public HTTP ${judge0Res.status}`);
+        }
+
+        const data = await judge0Res.json();
+        if (data && data.status && data.status.id <= 3) {
+          return res.status(200).json({
+            success: true,
+            data: {
+              stdout: data.stdout || "",
+              stderr: data.stderr || data.compile_output || "",
+              output: data.stdout || data.stderr || data.compile_output || (data.status.id === 3 ? "Process finished successfully" : ""),
+              code: data.status.id === 3 ? 0 : 1
+            }
+          });
+        }
+
+        if (data && data.status) {
+          return res.status(200).json({
+            success: true,
+            data: {
+              stdout: data.stdout || "",
+              stderr: data.stderr || data.compile_output || data.status.description,
+              output: data.status.description + (data.stderr ? "\n" + data.stderr : ""),
+              code: 1
+            }
+          });
+        }
+      } catch (e) {
+        console.log(`Public Judge0 ${endpoint} failed/blocked:`, e.message || e);
       }
     }
 
@@ -102,16 +161,25 @@ export const executeCode = async (req, res) => {
         body: JSON.stringify({ language: langCode, code: processedCode, input }),
         signal: AbortSignal.timeout(5000)
       });
+
+      if (!codexRes.ok) {
+        throw new Error(`CodeX HTTP ${codexRes.status}`);
+      }
       
       const data = await codexRes.json();
-      if (data && data.status === 200 && data.output) {
+      if (data && (data.output || data.error)) {
         return res.status(200).json({
           success: true,
-          data: { stdout: data.output, stderr: data.error || "", output: data.output || data.error, code: 0 }
+          data: {
+            stdout: data.output || "",
+            stderr: data.error || "",
+            output: data.output || data.error || "",
+            code: data.error ? 1 : 0
+          }
         });
       }
     } catch (e) {
-      console.log('CodeX failed/blocked');
+      console.log('CodeX failed/blocked:', e.message || e);
     }
 
     // 2. Try Piston Instances in sequence
@@ -132,6 +200,10 @@ export const executeCode = async (req, res) => {
           signal: AbortSignal.timeout(6000)
         });
 
+        if (!pistonRes.ok) {
+          throw new Error(`Piston HTTP ${pistonRes.status}`);
+        }
+
         const pistonData = await pistonRes.json();
         if (pistonData && pistonData.run) {
           return res.status(200).json({
@@ -145,60 +217,43 @@ export const executeCode = async (req, res) => {
           });
         }
       } catch (e) {
-        console.log(`Piston ${instance} failed/blocked`);
+        console.log(`Piston ${instance} failed/blocked:`, e.message || e);
       }
     }
 
     // 3. Try Glot.io (Last mirror attempt)
     try {
       console.log('Trying Glot.io...');
-      const glotRes = await fetch(`https://glot.io/api/run/${language.toLowerCase() === 'java' ? 'java' : language.toLowerCase()}/latest`, {
+      const glotRes = await fetch(`https://glot.io/api/run/${normalizedLanguage === 'java' ? 'java' : normalizedLanguage}/latest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: [{ name: language.toLowerCase() === 'java' ? 'Main.java' : 'main', content: processedCode }], stdin: input }),
+        body: JSON.stringify({ files: [{ name: normalizedLanguage === 'java' ? 'Main.java' : 'main', content: processedCode }], stdin: input }),
         signal: AbortSignal.timeout(6000)
       });
+
+      if (!glotRes.ok) {
+        throw new Error(`Glot HTTP ${glotRes.status}`);
+      }
+
       const glotData = await glotRes.json();
-      if (glotData && glotData.stdout) {
+      if (glotData && (glotData.stdout || glotData.stderr)) {
         return res.status(200).json({
           success: true,
-          data: { stdout: glotData.stdout, stderr: glotData.stderr || "", output: glotData.stdout || glotData.stderr, code: 0 }
+          data: {
+            stdout: glotData.stdout || "",
+            stderr: glotData.stderr || "",
+            output: glotData.stdout || glotData.stderr || "",
+            code: glotData.stderr ? 1 : 0
+          }
         });
       }
     } catch (e) {
-      console.log('Glot.io failed/blocked');
+      console.log('Glot.io failed/blocked:', e.message || e);
     }
 
-    // 4. Smart Simulation (Case-specific for common interview tasks)
-    let simulatedOutput = `> [SIMULATION] Live execution engine is unreachable via your network.\n> Verified logic using local fallback validator...\n\n`;
-
-    const lowerCode = processedCode.toLowerCase();
-    const lowerInput = input.toLowerCase();
-    
-    // Uultra-robust detection for Top K Frequent Words (VERY LENIENT)
-    const isFreq = lowerCode.includes('frequent') || lowerCode.includes('priorityqueue') || lowerCode.includes('minheap') || lowerCode.includes('k');
-    const isInputFreq = lowerInput.includes('i') || lowerInput.includes('love') || lowerInput.includes('leetcode') || lowerInput.includes('6');
-
-    // NEW: Trapping Rain Water Detection
-    const isTrap = lowerCode.includes('trap') || lowerCode.includes('leftmax') || lowerCode.includes('rightmax') || lowerCode.includes('water');
-    const hasHeightArray = lowerCode.includes('0,1,0,2,1,0,1,3,2,1,2,1');
-
-    if (isFreq || isInputFreq) {
-      simulatedOutput += `STDOUT:\n[i, love]\n\nResult: Your 'Top K Frequent Words' solution is logically sound. Verification complete!`;
-    } else if (isTrap || hasHeightArray) {
-      simulatedOutput += `STDOUT:\nTrapped Water: 6\n\nResult: Your 'Trapping Rain Water' solution is perfectly optimized (Two-Pointer approach). Verification complete!`;
-    } else {
-      simulatedOutput += `Result: Your solution has been received and formatted for AI review.\n(Live execution skipped; please submit your answer when ready.)`;
-    }
-    
-    return res.status(200).json({
-      success: true,
-      data: {
-        stdout: simulatedOutput,
-        stderr: "",
-        output: simulatedOutput,
-        code: 0
-      }
+    return res.status(503).json({
+      success: false,
+      message: 'Execution service is temporarily unavailable. Please try again in a moment.'
     });
 
   } catch (error) {

@@ -193,32 +193,74 @@ export const submitAnswer = async (req, res) => {
 
     const nextIndex = session.completedQuestions;
     if (nextIndex < session.totalQuestions) {
+      if (session.interviewRound === 'Coding') {
+        // For coding rounds, always keep the next question independent from previous answers.
+        let nextQuestion = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
+
+        if (!nextQuestion) {
+          const existingQuestions = await Question.find({ session: session._id }).select('questionBankId');
+          const usedBankIds = existingQuestions
+            .filter(q => q.questionBankId)
+            .map(q => q.questionBankId);
+
+          const matchQuery = { type: 'Coding' };
+          if (session.company) matchQuery.companyTags = { $in: [session.company] };
+          if (session.roleLevel) matchQuery.roleLevel = session.roleLevel;
+
+          let bankQuestion = await QuestionBank.aggregate([
+            { $match: matchQuery },
+            ...(usedBankIds.length ? [{ $match: { _id: { $nin: usedBankIds } } }] : []),
+            { $sample: { size: 1 } }
+          ]);
+
+          if (!bankQuestion.length) {
+            bankQuestion = await QuestionBank.aggregate([
+              { $match: matchQuery },
+              { $sample: { size: 1 } }
+            ]);
+          }
+
+          if (bankQuestion.length) {
+            nextQuestion = await Question.create({
+              session: session._id,
+              questionBankId: bankQuestion[0]._id,
+              text: bankQuestion[0].text,
+              type: 'Coding',
+              codeTemplate: bankQuestion[0].codeTemplate
+            });
+          } else {
+            const generated = await generateTargetedQuestions(session.company, session.roleLevel, 'Coding', 1);
+            nextQuestion = await Question.create({
+              session: session._id,
+              text: generated[0] || 'Solve this coding problem: find the longest substring without repeating characters.',
+              type: 'Coding'
+            });
+          }
+        }
+      } else {
         let followUpText;
         if (answer === '__SKIPPED__' || evaluation.score === 0) {
-            if (session.interviewRound === 'Coding') {
-                followUpText = "Let's try a different coding challenge: Write a function to check if a string is a palindrome. Consider edge cases like spaces and punctuation.";
-            } else {
-                followUpText = "It seems we had a bit of a disconnect there. Let's try a fresh one: Can you tell me about a time you had to learn a new technology quickly?";
-            }
+          followUpText = "It seems we had a bit of a disconnect there. Let's try a fresh one: Can you tell me about a time you had to learn a new technology quickly?";
         } else {
-            // Generate follow-up question
-            followUpText = await generateFollowUpQuestion(question.text, answer, evaluation);
+          // Generate follow-up question
+          followUpText = await generateFollowUpQuestion(question.text, answer, evaluation);
         }
-        
+
         // Check if there's already a next question placeholder
         let nextQuestion = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
-        
+
         if (nextQuestion) {
-            nextQuestion.text = followUpText;
-            nextQuestion.type = session.interviewRound === 'Coding' ? 'Coding' : 'Technical';
-            await nextQuestion.save();
+          nextQuestion.text = followUpText;
+          nextQuestion.type = 'Technical';
+          await nextQuestion.save();
         } else {
-            await Question.create({
-                session: session._id,
-                text: followUpText,
-                type: session.interviewRound === 'Coding' ? 'Coding' : 'Technical'
-            });
+          await Question.create({
+            session: session._id,
+            text: followUpText,
+            type: 'Technical'
+          });
         }
+      }
     }
 
     if (session.completedQuestions >= session.totalQuestions) {
@@ -298,35 +340,80 @@ export const submitAnswerStream = async (req, res) => {
 
     // 4. Handle next question
     if (session.status !== 'completed') {
-      sendEvent('status', { message: 'Generating follow-up question...' });
-      
-      let followUpText;
-      if (answer === '__SKIPPED__' || evaluation.score === 0) {
-        if (session.interviewRound === 'Coding') {
-          followUpText = "Let's try a different coding challenge: Write a function to check if a string is a palindrome. Consider edge cases like spaces and punctuation.";
-        } else {
-          followUpText = "It seems we had a bit of a disconnect there. Let's try a fresh one: Can you tell me about a time you had to learn a new technology quickly?";
+      sendEvent('status', { message: 'Preparing next question...' });
+
+      let nextQuestion = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
+
+      if (session.interviewRound === 'Coding') {
+        // Keep coding questions independent from previous answer/evaluation.
+        if (!nextQuestion) {
+          const existingQuestions = await Question.find({ session: session._id }).select('questionBankId');
+          const usedBankIds = existingQuestions
+            .filter(q => q.questionBankId)
+            .map(q => q.questionBankId);
+
+          const matchQuery = { type: 'Coding' };
+          if (session.company) matchQuery.companyTags = { $in: [session.company] };
+          if (session.roleLevel) matchQuery.roleLevel = session.roleLevel;
+
+          let bankQuestion = await QuestionBank.aggregate([
+            { $match: matchQuery },
+            ...(usedBankIds.length ? [{ $match: { _id: { $nin: usedBankIds } } }] : []),
+            { $sample: { size: 1 } }
+          ]);
+
+          if (!bankQuestion.length) {
+            bankQuestion = await QuestionBank.aggregate([
+              { $match: matchQuery },
+              { $sample: { size: 1 } }
+            ]);
+          }
+
+          if (bankQuestion.length) {
+            nextQuestion = await Question.create({
+              session: session._id,
+              questionBankId: bankQuestion[0]._id,
+              text: bankQuestion[0].text,
+              type: 'Coding',
+              codeTemplate: bankQuestion[0].codeTemplate
+            });
+          } else {
+            const generated = await generateTargetedQuestions(session.company, session.roleLevel, 'Coding', 1);
+            nextQuestion = await Question.create({
+              session: session._id,
+              text: generated[0] || 'Solve this coding problem: find the longest substring without repeating characters.',
+              type: 'Coding'
+            });
+          }
         }
       } else {
-        followUpText = await generateFollowUpQuestion(question.text, answer, evaluation);
-      }
-      
-      // Update/Create next question in DB
-      let nextQuestion = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
-      if (nextQuestion) {
-        nextQuestion.text = followUpText;
-        nextQuestion.type = session.interviewRound === 'Coding' ? 'Coding' : 'Technical';
-        await nextQuestion.save();
-      } else {
-        nextQuestion = await Question.create({ 
-          session: session._id, 
-          text: followUpText,
-          type: session.interviewRound === 'Coding' ? 'Coding' : 'Technical'
-        });
+        let followUpText;
+        if (answer === '__SKIPPED__' || evaluation.score === 0) {
+          followUpText = "It seems we had a bit of a disconnect there. Let's try a fresh one: Can you tell me about a time you had to learn a new technology quickly?";
+        } else {
+          followUpText = await generateFollowUpQuestion(question.text, answer, evaluation);
+        }
+
+        if (nextQuestion) {
+          nextQuestion.text = followUpText;
+          nextQuestion.type = 'Technical';
+          await nextQuestion.save();
+        } else {
+          nextQuestion = await Question.create({
+            session: session._id,
+            text: followUpText,
+            type: 'Technical'
+          });
+        }
       }
 
       // 5. Stream the next question
-      sendEvent('nextQuestion', { text: followUpText, _id: nextQuestion._id });
+      sendEvent('nextQuestion', {
+        text: nextQuestion.text,
+        _id: nextQuestion._id,
+        type: nextQuestion.type,
+        codeTemplate: nextQuestion.codeTemplate
+      });
     } else {
       sendEvent('final', { message: 'Session completed!' });
     }

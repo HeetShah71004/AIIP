@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, Timer, Award, CheckCircle, ChevronLeft, ChevronRight, Loader2, XCircle, AlertCircle, LayoutGrid, User, Bot, Play, Code, Code2, Terminal, FileText, BookOpen, FlaskConical, History, Maximize2, ThumbsUp, ThumbsDown, MessageSquare, Star, Share2, HelpCircle } from 'lucide-react';
+import { Send, Timer, Award, CheckCircle, ChevronLeft, ChevronRight, Loader2, XCircle, AlertCircle, LayoutGrid, User, Bot, Play, Code, Code2, Terminal, FileText, BookOpen, FlaskConical, History, ThumbsUp, ThumbsDown, MessageSquare, Star, Share2, HelpCircle, Maximize2, Minimize2 } from 'lucide-react';
 import { getSession, submitAnswer, getQuestionsFromBank } from '../api/interviewApi';
 import api from '../api/client';
 import toast from 'react-hot-toast';
@@ -73,11 +73,51 @@ const MockInterview = () => {
     const [timeLeft, setTimeLeft] = useState(1800);
     const [showSkipModal, setShowSkipModal] = useState(false);
     const [showExitModal, setShowExitModal] = useState(false);
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [selectedPastQuestion, setSelectedPastQuestion] = useState(null);
+    const [leftPaneWidth, setLeftPaneWidth] = useState(42);
+    const [isResizing, setIsResizing] = useState(false);
+    const [descriptionHeight, setDescriptionHeight] = useState(46);
+    const [isDescChatResizing, setIsDescChatResizing] = useState(false);
+    const [consoleHeight, setConsoleHeight] = useState(240);
+    const [isConsoleResizing, setIsConsoleResizing] = useState(false);
+    const [isFullscreenMode, setIsFullscreenMode] = useState(false);
     const { theme } = useTheme();
+    const isDark = theme === 'dark';
     const scrollAreaRef = useRef(null);
+    const splitPaneRef = useRef(null);
+    const leftPaneRef = useRef(null);
+    const rightPaneRef = useRef(null);
+    const interviewContainerRef = useRef(null);
+    const leftPaneResizeMetaRef = useRef({ startY: 0, startHeight: 46 });
+    const consoleResizeMetaRef = useRef({ startY: 0, startHeight: 240 });
     const isFinished = chatHistory.some(m => m.isFinal);
+    const shouldShowLiveFeedback = !isCodingMode || isFinished;
+    const activeQuestion = questions[currentQuestionIndex];
+    const questionPromptIndices = chatHistory.reduce((indices, msg, idx) => {
+        if (msg.isQuestion) indices.push(idx);
+        return indices;
+    }, []);
+    const currentPromptPointer = questionPromptIndices.length > 0
+        ? Math.min(currentQuestionIndex, questionPromptIndices.length - 1)
+        : -1;
+    const currentQuestionStartIndex = currentPromptPointer >= 0 ? questionPromptIndices[currentPromptPointer] : -1;
+    const nextQuestionStartIndex = currentPromptPointer >= 0
+        ? (questionPromptIndices[currentPromptPointer + 1] ?? chatHistory.length)
+        : chatHistory.length;
+    const currentQuestionThread = currentQuestionStartIndex >= 0
+        ? chatHistory.slice(currentQuestionStartIndex + 1, nextQuestionStartIndex)
+        : [];
+    const nonCodingMessages = currentQuestionThread
+        .filter(msg => !msg.isQuestion)
+        .filter(msg => shouldShowLiveFeedback || !msg.isFeedback);
+    const rawQuestionTitle = (activeQuestion?.title || "").trim();
+    const hasMeaningfulQuestionTitle = rawQuestionTitle.length > 0 && !/^(interview prompt|problem description|question)$/i.test(rawQuestionTitle);
+    const displayQuestionNumber = Math.min(currentQuestionIndex + 1, Math.max(questions.length, 1));
+    const getOrdinalWord = (n) => {
+        const words = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"];
+        if (n >= 1 && n <= words.length) return words[n - 1];
+        return `${n}th`;
+    };
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -156,12 +196,127 @@ const MockInterview = () => {
     }, []);
 
     useEffect(() => {
+        if (!isResizing) return;
+
+        const handleMouseMove = (event) => {
+            if (!splitPaneRef.current) return;
+            const rect = splitPaneRef.current.getBoundingClientRect();
+            const nextWidth = ((event.clientX - rect.left) / rect.width) * 100;
+            const clampedWidth = Math.min(72, Math.max(28, nextWidth));
+            setLeftPaneWidth(clampedWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+        };
+
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing]);
+
+    useEffect(() => {
+        if (!isConsoleResizing) return;
+
+        const handleMouseMove = (event) => {
+            const { startY, startHeight } = consoleResizeMetaRef.current;
+            const delta = startY - event.clientY;
+            const nextHeight = startHeight + delta;
+            const maxHeight = rightPaneRef.current
+                ? Math.max(220, rightPaneRef.current.getBoundingClientRect().height * 0.55)
+                : 420;
+            const clampedHeight = Math.min(maxHeight, Math.max(140, nextHeight));
+            setConsoleHeight(clampedHeight);
+        };
+
+        const handleMouseUp = () => {
+            setIsConsoleResizing(false);
+        };
+
+        document.body.style.cursor = 'row-resize';
+        document.body.style.userSelect = 'none';
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isConsoleResizing]);
+
+    useEffect(() => {
+        if (!isDescChatResizing) return;
+
+        const handleMouseMove = (event) => {
+            if (!leftPaneRef.current) return;
+            const { startY, startHeight } = leftPaneResizeMetaRef.current;
+            const delta = startY - event.clientY;
+            const paneHeight = leftPaneRef.current.getBoundingClientRect().height;
+            if (!paneHeight) return;
+            const nextHeight = startHeight + (delta / paneHeight) * 100;
+            const clampedHeight = Math.min(68, Math.max(28, nextHeight));
+            setDescriptionHeight(clampedHeight);
+        };
+
+        const handleMouseUp = () => {
+            setIsDescChatResizing(false);
+        };
+
+        document.body.style.cursor = 'row-resize';
+        document.body.style.userSelect = 'none';
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDescChatResizing]);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreenMode(document.fullscreenElement === interviewContainerRef.current);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    const toggleFullscreenMode = async () => {
+        try {
+            if (!document.fullscreenElement && interviewContainerRef.current) {
+                await interviewContainerRef.current.requestFullscreen();
+            } else if (document.fullscreenElement) {
+                await document.exitFullscreen();
+            }
+        } catch (error) {
+            toast.error('Fullscreen is not supported in this browser');
+        }
+    };
+
+    useEffect(() => {
         if (questions[currentQuestionIndex]) {
             setIsCodingMode(questions[currentQuestionIndex].type === 'Coding');
             if (questions[currentQuestionIndex].type === 'Coding') {
                 setCode(questions[currentQuestionIndex].codeTemplate || '// Start coding here...');
+                setOutput('');
+                setUserInput('');
             } else {
                 setAnswer('');
+                setOutput('');
+                setUserInput('');
             }
         }
     }, [currentQuestionIndex, questions]);
@@ -181,12 +336,13 @@ const MockInterview = () => {
                 const { stdout, stderr, output: fullOutput } = res.data.data;
                 const timestamp = new Date().toLocaleTimeString();
                 
-                let simulatedOutput = `> [Success] Code executed successfully!\n> ${timestamp}\n`;
-                if (stdout) simulatedOutput += `\nSTDOUT:\n${stdout}`;
-                if (stderr) simulatedOutput += `\nSTDERR:\n${stderr}`;
-                if (!stdout && !stderr) simulatedOutput += `\n(No output produced)`;
+                let executionOutput = `> [Success] Code executed successfully!\n> ${timestamp}\n`;
+                if (stdout) executionOutput += `\nSTDOUT:\n${stdout}`;
+                if (stderr) executionOutput += `\nSTDERR:\n${stderr}`;
+                if (!stdout && !stderr && fullOutput) executionOutput += `\n${fullOutput}`;
+                if (!stdout && !stderr && !fullOutput) executionOutput += `\n(No output produced)`;
                 
-                setOutput(simulatedOutput);
+                setOutput(executionOutput);
             } else {
                 setOutput(`> [Error] ${res.data.message}`);
             }
@@ -458,137 +614,77 @@ const MockInterview = () => {
         <div className={cn(
             "mx-auto transition-all duration-500 ease-in-out",
             isCodingMode ? "w-full max-w-none h-screen px-0 py-0" : "container max-w-7xl px-4 py-8 h-[calc(100vh-64px)]"
-        )}>
+        )}
+        ref={interviewContainerRef}
+        >
             <Card className={cn(
                 "grid h-full overflow-hidden border-border/50 shadow-2xl transition-all duration-500",
-                !isCodingMode && "lg:grid-cols-[280px_1fr] rounded-3xl",
-                isCodingMode && (sidebarCollapsed ? "lg:grid-cols-[64px_1fr]" : "lg:grid-cols-[260px_1fr] rounded-none border-none")
+                !isCodingMode && "lg:grid-cols-[260px_1fr] rounded-3xl",
+                isCodingMode && "grid-cols-1 rounded-none border-none",
+                isCodingMode && !isDark && "bg-gradient-to-br from-white via-slate-50 to-blue-50/30"
             )}>
                 {/* Sidebar */}
+                {!isCodingMode && (
                 <aside className={cn(
-                    "border-r border-border/50 bg-muted/20 flex flex-col h-full overflow-hidden transition-all duration-500 relative",
-                    sidebarCollapsed ? "w-[64px]" : "w-[260px]"
+                    "border-r border-border/50 flex flex-col h-full overflow-hidden w-[260px]",
+                    isDark ? "bg-muted/20" : "bg-white/80 backdrop-blur-sm",
                 )}>
-                    {/* Collapse Toggle */}
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                        className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-6 w-6 rounded-full bg-border/80 border border-border hover:bg-primary hover:text-primary-foreground shadow-md transition-all scale-0 group-hover:scale-100 lg:scale-100"
-                    >
-                        <ChevronLeft size={14} className={cn("transition-transform duration-500", sidebarCollapsed && "rotate-180")} />
-                    </Button>
-
-                    <div className={cn("p-6 border-b border-border/50 flex items-center justify-between transition-all", sidebarCollapsed && "px-3")}>
-                        {!sidebarCollapsed ? (
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={handleGoToDashboardClick} 
-                                disabled={submitting}
-                                className="w-full justify-start gap-2 hover:bg-background/80 transition-all font-medium"
-                            >
-                                <ChevronLeft size={16} /> Dashboard
-                            </Button>
-                        ) : (
-                            <Button variant="ghost" size="icon" onClick={handleGoToDashboardClick} className="mx-auto"><LayoutGrid size={20} /></Button>
-                        )}
+                    <div className="p-6 border-b border-border/50 flex items-center justify-between">
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={handleGoToDashboardClick} 
+                            disabled={submitting}
+                            className="w-full justify-start gap-2 hover:bg-background/80 transition-all font-medium"
+                        >
+                            <ChevronLeft size={16} /> Dashboard
+                        </Button>
                     </div>
-                    {!sidebarCollapsed ? (
-                        <>
-                            <div className="p-6 space-y-8">
-                                <div className="grid gap-5">
-                                    <div className="p-4 bg-background/40 rounded-xl border border-border/40 space-y-1 shadow-sm">
-                                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
-                                            <Timer size={14} className="text-primary" /> Time Remaining
-                                        </div>
-                                        <p className="text-2xl font-bold tracking-tight text-primary/90">{formatTime(timeLeft)}</p>
-                                    </div>
-                                    <div className="p-4 bg-background/40 rounded-xl border border-border/40 space-y-3 shadow-sm">
-                                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
-                                            <Award size={14} className="text-primary" /> Progress
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="flex items-end justify-between">
-                                                <p className="text-xl font-bold tracking-tight">
-                                                    {isFinished ? 'Completed' : `${currentQuestionIndex} / ${questions.length}`}
-                                                </p>
-                                                <p className="text-[10px] font-semibold text-muted-foreground mb-1">
-                                                    {isFinished ? '100%' : `${((currentQuestionIndex / questions.length) * 100).toFixed(0)}%`}
-                                                </p>
-                                            </div>
-                                            <Progress value={isFinished ? 100 : (currentQuestionIndex / questions.length) * 100} className="h-1.5" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <ScrollArea className="flex-1 p-6">
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between px-2">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.25em] opacity-70">Case Navigation</p>
-                                        <LayoutGrid size={14} className="text-muted-foreground" />
-                                    </div>
-                                    <div className="grid grid-cols-4 gap-3 px-2">
-                                        {questions.map((q, i) => (
-                                            <div 
-                                                key={i} 
-                                                onClick={() => i < currentQuestionIndex ? setSelectedPastQuestion(i) : null}
-                                                className={cn(
-                                                    "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm ring-offset-background",
-                                                    (i === currentQuestionIndex && !isFinished) ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-105 z-10" :
-                                                    i < currentQuestionIndex ? (
-                                                        `cursor-pointer hover:opacity-80 hover:scale-110 ${questions[i].answer === '__SKIPPED__' ? "bg-red-500/80 text-white" : (questions[i].answer ? "bg-green-500/80 text-white" : "bg-muted/50 text-muted-foreground")}`
-                                                    ) : "bg-muted/30 text-muted-foreground/40 border border-border/50"
-                                                )}
-                                            >
-                                                {i + 1}
-                                            </div>
-                                        ))}
-                                    </div>
+                    <div className="p-6 space-y-8">
+                        <div className="grid gap-5">
+                            <div className="p-4 bg-background/40 rounded-xl border border-border/40 space-y-1 shadow-sm">
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
+                                    <Timer size={14} className="text-primary" /> Time Remaining
                                 </div>
-                            </ScrollArea>
+                                <p className="text-2xl font-bold tracking-tight text-primary/90">{formatTime(timeLeft)}</p>
+                            </div>
+                            <div className="p-4 bg-background/40 rounded-xl border border-border/40 space-y-3 shadow-sm">
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
+                                    <Award size={14} className="text-primary" /> Progress
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex items-end justify-between">
+                                        <p className="text-xl font-bold tracking-tight">
+                                            {isFinished ? 'Completed' : `${currentQuestionIndex} / ${questions.length}`}
+                                        </p>
+                                        <p className="text-[10px] font-semibold text-muted-foreground mb-1">
+                                            {isFinished ? '100%' : `${((currentQuestionIndex / questions.length) * 100).toFixed(0)}%`}
+                                        </p>
+                                    </div>
+                                    <Progress value={isFinished ? 100 : (currentQuestionIndex / questions.length) * 100} className="h-1.5" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                            <div className="p-6 pt-0 space-y-4">
-                                {isFinished && (
-                                    <Button 
-                                        onClick={() => navigate(`/feedback/${sessionId}`)} 
-                                        className="w-full bg-primary text-primary-foreground hover:opacity-90 font-bold shadow-lg shadow-primary/20 h-10 rounded-xl mb-2"
-                                    >
-                                        <Award size={18} className="mr-2" /> View Full Report
-                                    </Button>
-                                )}
-                                <div className="grid grid-cols-2 gap-x-2 gap-y-2 p-4 bg-muted/20 rounded-2xl border border-border/40">
-                                    <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-muted/50 border border-border/50" /> Not Visited
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Current
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Answered
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> Skipped
-                                    </div>
-                                </div>
+                    <ScrollArea className="flex-1 p-6">
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between px-2">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.25em] opacity-70">Case Navigation</p>
+                                <LayoutGrid size={14} className="text-muted-foreground" />
                             </div>
-                        </>
-                    ) : (
-                        <div className="flex flex-col items-center py-8 gap-10">
-                            <div className="flex flex-col items-center gap-6">
-                                <Timer size={20} className="text-muted-foreground/40" />
-                                <Progress value={isFinished ? 100 : (currentQuestionIndex / questions.length) * 100} className="w-10 h-1" orientation="vertical" />
-                                <Award size={20} className="text-muted-foreground/40" />
-                            </div>
-                            <div className="flex flex-col gap-3">
+                            <div className="grid grid-cols-4 gap-3 px-2">
                                 {questions.map((q, i) => (
                                     <div 
                                         key={i} 
+                                        onClick={() => i < currentQuestionIndex ? setSelectedPastQuestion(i) : null}
                                         className={cn(
-                                            "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
-                                            (i === currentQuestionIndex && !isFinished) ? "bg-primary text-primary-foreground" :
-                                            i < currentQuestionIndex ? (questions[i].answer === '__SKIPPED__' ? "bg-red-500/50" : "bg-green-500/50") : "bg-muted/30"
+                                            "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm ring-offset-background",
+                                            (i === currentQuestionIndex && !isFinished) ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-105 z-10" :
+                                            i < currentQuestionIndex ? (
+                                                `cursor-pointer hover:opacity-80 hover:scale-110 ${questions[i].answer === '__SKIPPED__' ? "bg-red-500/80 text-white" : (questions[i].answer ? "bg-green-500/80 text-white" : "bg-muted/50 text-muted-foreground")}`
+                                            ) : "bg-muted/30 text-muted-foreground/40 border border-border/50"
                                         )}
                                     >
                                         {i + 1}
@@ -596,105 +692,319 @@ const MockInterview = () => {
                                 ))}
                             </div>
                         </div>
-                    )}
+                    </ScrollArea>
+
+                    <div className="p-6 pt-0 space-y-4">
+                        {isFinished && (
+                            <Button 
+                                onClick={() => navigate(`/feedback/${sessionId}`)} 
+                                className="w-full bg-primary text-primary-foreground hover:opacity-90 font-bold shadow-lg shadow-primary/20 h-10 rounded-xl mb-2"
+                            >
+                                <Award size={18} className="mr-2" /> View Full Report
+                            </Button>
+                        )}
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-2 p-4 bg-muted/20 rounded-2xl border border-border/40">
+                            <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
+                                <div className="w-1.5 h-1.5 rounded-full bg-muted/50 border border-border/50" /> Not Visited
+                            </div>
+                            <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Current
+                            </div>
+                            <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Answered
+                            </div>
+                            <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> Skipped
+                            </div>
+                        </div>
+                    </div>
                 </aside>
+                )}
 
                 {/* Main Content Area */}
                 <div className={cn(
-                    "flex-1 flex overflow-hidden bg-background/20 backdrop-blur-md",
-                    isCodingMode ? "flex-row" : "flex-col"
+                    "flex-1 flex overflow-hidden backdrop-blur-md",
+                    isDark ? "bg-slate-950" : (isCodingMode ? "bg-slate-100" : "bg-gradient-to-b from-slate-100 to-slate-50"),
+                    "flex-col"
                 )}>
-                    {/* Left Pane: Chat & Problem Description */}
-                    <div className={cn(
-                        "flex flex-col h-full overflow-hidden border-r border-border/40",
-                        isCodingMode ? "w-[42%] min-w-[450px]" : "w-full"
-                    )}>
-                        <div className="px-4 py-2 border-b border-border/40 bg-muted/20 flex items-center justify-between shrink-0 h-11">
-                            <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="sm" className="h-8 gap-2 px-3 text-[11px] font-bold text-primary border-b-2 border-primary rounded-none hover:bg-transparent">
-                                    <FileText size={14} /> DESCRIPTION
-                                </Button>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/60 hover:text-foreground">
-                                    <Maximize2 size={14} />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/60 hover:text-foreground rotate-90">
-                                    <LayoutGrid size={14} />
-                                </Button>
-                            </div>
-                        </div>
-                        <ScrollArea ref={scrollAreaRef} className="flex-1">
-                            <div className="p-8 space-y-8 max-w-4xl mx-auto">
-                                {/* Problem Description at top for Coding Mode */}
-                                {isCodingMode && questions[currentQuestionIndex] && (
-                                    <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
-                                        <div className="flex items-center justify-between">
-                                            <h2 className="text-2xl font-bold tracking-tight text-foreground/90 leading-tight">
-                                                {currentQuestionIndex + 1}. {questions[currentQuestionIndex].title || "Problem Description"}
-                                            </h2>
-                                        </div>
+                    {isCodingMode && !isFullscreenMode && (
+                        <div className={cn(
+                            "h-14 shrink-0 border-b border-border/40 px-4 flex items-center sticky top-0 z-30 backdrop-blur-md",
+                            isDark ? "bg-slate-900 shadow-[0_6px_20px_rgba(0,0,0,0.25)]" : "bg-white shadow-[0_8px_18px_rgba(15,23,42,0.08)]"
+                        )}>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleGoToDashboardClick}
+                                disabled={submitting}
+                                className="h-8 px-2.5 gap-1.5 font-semibold"
+                            >
+                                <ChevronLeft size={14} /> Dashboard
+                            </Button>
 
-                                        <div className="flex flex-wrap gap-2">
-                                            <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-none font-bold text-[10px] px-2.5 py-0.5 rounded-full">Easy</Badge>
-                                        </div>
-
-                                        <div className="prose prose-invert max-w-none text-muted-foreground/90 leading-relaxed text-[15px] space-y-4">
-                                            <div dangerouslySetInnerHTML={{ __html: questions[currentQuestionIndex].text }} className="whitespace-pre-wrap" />
-                                        </div>
-
-                                        <div className="h-px bg-gradient-to-r from-transparent via-border/40 to-transparent" />
-                                    </div>
-                                )}
-
-                                <div className="space-y-8">
-                                    {chatHistory
-                                        .filter(msg => !(isCodingMode && questions[currentQuestionIndex] && msg.text === questions[currentQuestionIndex].text))
-                                        .map((msg, i) => (
-                                        <div key={msg.id || i} className={cn("flex w-full gap-3", msg.type === 'user' ? "flex-row-reverse" : "flex-row")}>
-                                            <ChatAvatar type={msg.type} />
-                                            <div className={cn("flex flex-col gap-2 max-w-[85%]", msg.type === 'user' ? "items-end" : "items-start")}>
-                                                <Card className={cn(
-                                                    "border-border/40 shadow-sm transition-all duration-300",
-                                                    msg.type === 'user' ? "bg-primary text-primary-foreground border-none shadow-primary/20" : "bg-card/90",
-                                                    msg.isFeedback && `border-l-4 ${getScoreBorderColor(msg.score)} shadow-md`,
-                                                    msg.isQuestion && !isCodingMode && "border-primary/20 bg-primary/[0.02]"
-                                                )}>
-                                                    <CardContent className="p-4 space-y-3">
-                                                        <p className="leading-relaxed whitespace-pre-wrap text-[14px] font-medium tracking-tight">
-                                                            {msg.text}
-                                                        </p>
-                                                        
-                                                        {msg.isFeedback && (
-                                                            <div className="flex items-center gap-3 pt-1">
-                                                                <Badge variant="outline" className={cn("font-bold px-2.5 py-0.5 text-[10px]", getScoreBadgeClass(msg.score))}>
-                                                                    Score: {msg.score}/10
-                                                                </Badge>
-                                                            </div>
-                                                        )}
-
-                                                        {msg.isFinal && (
-                                                            <Button size="sm" onClick={() => navigate(`/feedback/${sessionId}`)} className="w-full mt-2 bg-primary text-primary-foreground hover:opacity-90 font-bold shadow-lg shadow-primary/10 h-9">
-                                                                Full Performance Report
-                                                            </Button>
-                                                        )}
-                                                    </CardContent>
-                                                </Card>
-                                                <span className="text-[10px] font-bold text-muted-foreground/50 px-1 uppercase tracking-tighter">
-                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {submitting && (
-                                        <div className="flex flex-row gap-3">
-                                            <ChatAvatar type="ai" />
-                                            <TypingIndicator />
-                                        </div>
-                                    )}
+                            <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
+                                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground bg-background/70 px-2.5 py-1 rounded-full border border-border/50">
+                                <Timer size={13} className="text-primary" />
+                                <span className="text-foreground tracking-normal">{formatTime(timeLeft)}</span>
                                 </div>
                             </div>
-                        </ScrollArea>
+
+                            <div className="ml-auto flex items-center gap-3 min-w-[150px]">
+                                <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
+                                    {isFinished ? 'Completed' : `${currentQuestionIndex}/${questions.length}`}
+                                </span>
+                                <Progress value={isFinished ? 100 : (currentQuestionIndex / questions.length) * 100} className="h-1.5 w-20" />
+                                <div className="h-5 w-px bg-border/60" />
+
+                            <div className="flex-1 overflow-x-auto max-w-[420px]">
+                                <div className="flex items-center gap-2 min-w-max pr-2">
+                                    {questions.map((q, i) => (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            onClick={() => i < currentQuestionIndex ? setSelectedPastQuestion(i) : null}
+                                            className={cn(
+                                                "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
+                                                (i === currentQuestionIndex && !isFinished) ? "bg-primary text-primary-foreground" :
+                                                i < currentQuestionIndex ? (questions[i].answer === '__SKIPPED__' ? "bg-red-500/80 text-white" : "bg-green-500/80 text-white") : "bg-muted/40 text-muted-foreground",
+                                                i < currentQuestionIndex && "cursor-pointer hover:opacity-80"
+                                            )}
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            </div>
+
+                            {isFinished && (
+                                <Button
+                                    size="sm"
+                                    onClick={() => navigate(`/feedback/${sessionId}`)}
+                                    className="h-8 px-3 whitespace-nowrap"
+                                >
+                                    View Report
+                                </Button>
+                            )}
+                        </div>
+                    )}
+
+                    <div
+                        className={cn(
+                            "flex-1 flex overflow-hidden",
+                            isCodingMode ? "flex-row gap-2.5 p-2.5" : "flex-col"
+                        )}
+                        ref={splitPaneRef}
+                    >
+                    {/* Left Pane: Chat & Problem Description */}
+                    <div className={cn(
+                        "flex flex-col h-full overflow-hidden",
+                        isCodingMode ? "min-w-[360px] rounded-2xl border border-border/50" : "w-full border-r border-border/40",
+                        isCodingMode && !isDark && "bg-white"
+                    )}
+                    style={isCodingMode ? { width: `${leftPaneWidth}%` } : undefined}
+                    >
+                        {isCodingMode && (
+                            <div className={cn(
+                                "px-4 py-2 border-b border-border/40 flex items-center shrink-0 h-10",
+                                isDark ? "bg-slate-900" : "bg-slate-200"
+                            )}>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="sm" className="h-8 gap-2 px-3 text-[11px] font-bold text-primary border-b-2 border-primary rounded-none hover:bg-transparent">
+                                        <FileText size={14} /> DESCRIPTION
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                        {isCodingMode ? (
+                            <div ref={leftPaneRef} className="flex-1 min-h-0 p-2 flex flex-col gap-2">
+                                <div
+                                    className={cn(
+                                        "rounded-xl border border-border/40 overflow-hidden",
+                                        isDark ? "bg-slate-950" : "bg-white"
+                                    )}
+                                    style={{ height: `${descriptionHeight}%` }}
+                                >
+                                    <ScrollArea className="h-full">
+                                        <div className="mx-auto p-6 space-y-4 max-w-3xl">
+                                            {questions[currentQuestionIndex] && (
+                                                <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-700">
+                                                    <div className="flex items-center justify-between">
+                                                        <h2 className="text-2xl font-bold tracking-tight text-foreground/90 leading-tight">
+                                                            {currentQuestionIndex + 1}. {questions[currentQuestionIndex].title || "Problem Description"}
+                                                        </h2>
+                                                    </div>
+
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-none font-bold text-[10px] px-2.5 py-0.5 rounded-full">Easy</Badge>
+                                                    </div>
+
+                                                    <div className={cn(
+                                                        "prose max-w-none leading-relaxed text-[15px] space-y-4",
+                                                        isDark ? "prose-invert text-muted-foreground/90" : "prose-slate text-slate-700"
+                                                    )}>
+                                                        <div dangerouslySetInnerHTML={{ __html: questions[currentQuestionIndex].text }} className="whitespace-pre-wrap" />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </ScrollArea>
+                                </div>
+
+                                <div
+                                    role="separator"
+                                    aria-orientation="horizontal"
+                                    aria-label="Resize description and AI discussion"
+                                    onMouseDown={(event) => {
+                                        leftPaneResizeMetaRef.current = { startY: event.clientY, startHeight: descriptionHeight };
+                                        setIsDescChatResizing(true);
+                                    }}
+                                    onDoubleClick={() => setDescriptionHeight(46)}
+                                    className="h-2 cursor-row-resize shrink-0 bg-transparent"
+                                />
+
+                                <div className={cn(
+                                    "flex-1 min-h-0 rounded-xl border border-border/40 overflow-hidden flex flex-col",
+                                    isDark ? "bg-slate-950" : "bg-white"
+                                )}>
+                                    <div className={cn("h-10 px-4 border-b border-border/40 flex items-center", isDark ? "bg-slate-900" : "bg-slate-100")}>
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">AI Discussion</p>
+                                    </div>
+
+                                    <ScrollArea ref={scrollAreaRef} className="flex-1">
+                                        <div className="mx-auto p-5 space-y-5 max-w-3xl">
+                                            {chatHistory
+                                                .filter(msg => !(questions[currentQuestionIndex] && msg.text === questions[currentQuestionIndex].text))
+                                                .filter(msg => shouldShowLiveFeedback || !msg.isFeedback)
+                                                .map((msg, i) => (
+                                                <div key={msg.id || i} className={cn("flex w-full gap-3", msg.type === 'user' ? "flex-row-reverse" : "flex-row")}>
+                                                    <ChatAvatar type={msg.type} />
+                                                    <div className={cn("flex flex-col gap-2 max-w-[85%]", msg.type === 'user' ? "items-end" : "items-start")}>
+                                                        <Card className={cn(
+                                                            "border-border/40 shadow-sm transition-all duration-300",
+                                                            msg.type === 'user' ? "bg-primary text-primary-foreground border-none shadow-primary/20" : "bg-card/90",
+                                                            msg.isFeedback && `border-l-4 ${getScoreBorderColor(msg.score)} shadow-md`
+                                                        )}>
+                                                            <CardContent className="p-4 space-y-3">
+                                                                <p className="leading-relaxed whitespace-pre-wrap text-[14px] font-medium tracking-tight">
+                                                                    {msg.text}
+                                                                </p>
+
+                                                                {msg.isFeedback && (
+                                                                    <div className="flex items-center gap-3 pt-1">
+                                                                        <Badge variant="outline" className={cn("font-bold px-2.5 py-0.5 text-[10px]", getScoreBadgeClass(msg.score))}>
+                                                                            Score: {msg.score}/10
+                                                                        </Badge>
+                                                                    </div>
+                                                                )}
+
+                                                                {msg.isFinal && (
+                                                                    <Button size="sm" onClick={() => navigate(`/feedback/${sessionId}`)} className="w-full mt-2 bg-primary text-primary-foreground hover:opacity-90 font-bold shadow-lg shadow-primary/10 h-9">
+                                                                        Full Performance Report
+                                                                    </Button>
+                                                                )}
+                                                            </CardContent>
+                                                        </Card>
+                                                        <span className="text-[10px] font-bold text-muted-foreground/50 px-1 uppercase tracking-tighter">
+                                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {submitting && (
+                                                <div className="flex flex-row gap-3">
+                                                    <ChatAvatar type="ai" />
+                                                    <TypingIndicator />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </ScrollArea>
+                                </div>
+                            </div>
+                        ) : (
+                            <ScrollArea ref={scrollAreaRef} className="flex-1">
+                                <div className="mx-auto w-full max-w-4xl p-4 md:p-6 space-y-5 md:space-y-6">
+                                    <Card className="border-border/50 shadow-sm bg-card/90 overflow-hidden">
+                                        <CardHeader className="pb-3 border-b border-border/40 bg-muted/20">
+                                            <CardTitle className="text-[11px] tracking-[0.15em] uppercase text-muted-foreground font-bold flex items-center gap-2">
+                                                <FileText size={14} className="text-primary" /> Interview Question
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-5 md:p-6 space-y-4">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider">
+                                                    Question {displayQuestionNumber} of {questions.length}
+                                                </Badge>
+                                            </div>
+                                            <h2 className="text-lg md:text-xl font-bold tracking-tight leading-snug text-foreground">
+                                                {hasMeaningfulQuestionTitle
+                                                    ? `${displayQuestionNumber}. ${rawQuestionTitle}`
+                                                    : `Question ${displayQuestionNumber}`}
+                                            </h2>
+                                            <div className="leading-relaxed text-[14px] md:text-[15px] text-muted-foreground whitespace-pre-wrap">
+                                                <div dangerouslySetInnerHTML={{ __html: activeQuestion?.text || "" }} />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    <div className="space-y-4">
+                                        <div className="flex items-center px-1">
+                                            <p className="text-[11px] tracking-[0.15em] uppercase text-muted-foreground font-bold">Discussion</p>
+                                        </div>
+
+                                        {nonCodingMessages.map((msg, i) => (
+                                                <div key={msg.id || i} className={cn("flex w-full gap-3", msg.type === 'user' ? "flex-row-reverse" : "flex-row")}>
+                                                    <ChatAvatar type={msg.type} />
+                                                    <div className={cn("flex flex-col gap-2 max-w-[88%]", msg.type === 'user' ? "items-end" : "items-start")}>
+                                                        <Card className={cn(
+                                                            "border-border/40 shadow-sm transition-all duration-300",
+                                                            msg.type === 'user' ? "bg-primary text-primary-foreground border-none shadow-primary/20" : "bg-card/90",
+                                                            msg.isFeedback && `border-l-4 ${getScoreBorderColor(msg.score)} shadow-md`
+                                                        )}>
+                                                            <CardContent className="p-4 space-y-3">
+                                                                <p className="leading-relaxed whitespace-pre-wrap text-[14px] font-medium tracking-tight">
+                                                                    {msg.text}
+                                                                </p>
+
+                                                                {msg.isFeedback && (
+                                                                    <div className="flex items-center gap-3 pt-1">
+                                                                        <Badge variant="outline" className={cn("font-bold px-2.5 py-0.5 text-[10px]", getScoreBadgeClass(msg.score))}>
+                                                                            Score: {msg.score}/10
+                                                                        </Badge>
+                                                                    </div>
+                                                                )}
+
+                                                                {msg.isFinal && (
+                                                                    <Button size="sm" onClick={() => navigate(`/feedback/${sessionId}`)} className="w-full mt-2 bg-primary text-primary-foreground hover:opacity-90 font-bold shadow-lg shadow-primary/10 h-9">
+                                                                        Full Performance Report
+                                                                    </Button>
+                                                                )}
+                                                            </CardContent>
+                                                        </Card>
+                                                        <span className="text-[10px] font-bold text-muted-foreground/50 px-1 uppercase tracking-tighter">
+                                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                        {!submitting && nonCodingMessages.length === 0 && (
+                                            <div className="flex items-center gap-3 px-2 py-1.5">
+                                                <MessageSquare size={18} className="text-foreground" />
+                                                <p className="text-sm font-semibold text-foreground">Start your {getOrdinalWord(displayQuestionNumber)} answer</p>
+                                            </div>
+                                        )}
+
+                                        {submitting && (
+                                            <div className="flex flex-row gap-3">
+                                                <ChatAvatar type="ai" />
+                                                <TypingIndicator />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </ScrollArea>
+                        )}
 
                         {/* LeetCode Style Footer for Coding Mode */}
 
@@ -741,11 +1051,32 @@ const MockInterview = () => {
                         )}
                     </div>
 
+                    {isCodingMode && (
+                        <div
+                            role="separator"
+                            aria-orientation="vertical"
+                            aria-label="Resize description and code panels"
+                            onMouseDown={() => setIsResizing(true)}
+                            onDoubleClick={() => setLeftPaneWidth(42)}
+                            className={cn(
+                                "hidden lg:flex w-2 cursor-col-resize select-none bg-transparent"
+                            )}
+                        />
+                    )}
+
                     {/* Right Pane: Persistent Coding Interface */}
                     {isCodingMode && (
-                        <div className="flex-1 flex flex-col h-full bg-slate-900/30 overflow-hidden animate-in slide-in-from-right-4 duration-500">
+                        <div className={cn(
+                            "flex-1 flex flex-col h-full overflow-hidden animate-in slide-in-from-right-4 duration-500 rounded-2xl border border-border/50",
+                            isDark ? "bg-slate-950" : "bg-slate-100"
+                        )}
+                        ref={rightPaneRef}
+                        >
                             {/* Editor Toolbar */}
-                            <div className="px-4 py-2 bg-muted/40 border-b border-border/40 flex items-center justify-between shrink-0">
+                            <div className={cn(
+                                "px-4 py-1.5 border-b border-border/40 flex items-center justify-between shrink-0",
+                                isDark ? "bg-slate-900" : "bg-slate-200"
+                            )}>
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2 text-primary font-bold text-[11px] uppercase tracking-widest">
                                         <Code size={14} strokeWidth={2.5} />
@@ -754,12 +1085,18 @@ const MockInterview = () => {
                                     <div className="h-4 w-px bg-border/40" />
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="sm" className="h-8 gap-2 bg-background/20 border border-border/40 hover:bg-background/40 transition-all font-bold text-[11px] uppercase tracking-wider">
+                                            <Button variant="ghost" size="sm" className={cn(
+                                                "h-8 gap-2 border border-border/40 transition-all font-bold text-[11px] uppercase tracking-wider",
+                                                isDark ? "bg-background/20 hover:bg-background/40" : "bg-white/80 hover:bg-slate-100"
+                                            )}>
                                                 {language.toUpperCase()}
                                                 <ChevronRight size={14} className="rotate-90 opacity-50" />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="w-48 bg-slate-900/95 backdrop-blur-xl border-border/40 p-1">
+                                        <DropdownMenuContent align="start" className={cn(
+                                            "w-48 backdrop-blur-xl border-border/40 p-1",
+                                            isDark ? "bg-slate-900/95" : "bg-white/95"
+                                        )}>
                                             <DropdownMenuRadioGroup value={language} onValueChange={setLanguage}>
                                                 <DropdownMenuRadioItem value="javascript" className="text-[11px] font-bold uppercase tracking-wider focus:bg-primary focus:text-primary-foreground cursor-pointer">Javascript</DropdownMenuRadioItem>
                                                 <DropdownMenuRadioItem value="python" className="text-[11px] font-bold uppercase tracking-wider focus:bg-primary focus:text-primary-foreground cursor-pointer">Python</DropdownMenuRadioItem>
@@ -772,6 +1109,15 @@ const MockInterview = () => {
                                     </DropdownMenu>
                                 </div>
                                 <div className="flex items-center gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={toggleFullscreenMode}
+                                        className="h-8 w-8 p-0"
+                                        title={isFullscreenMode ? "Exit fullscreen" : "Maximize"}
+                                    >
+                                        {isFullscreenMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                                    </Button>
                                     <Button size="sm" variant="ghost" onClick={handleRunCode} disabled={isRunning} className="h-8 text-[11px] font-bold gap-2 hover:bg-green-500/10 hover:text-green-500 transition-all text-foreground uppercase tracking-wider">
                                         {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" />}
                                         Run
@@ -814,35 +1160,63 @@ const MockInterview = () => {
                                 />
                             </div>
 
+                            <div
+                                role="separator"
+                                aria-orientation="horizontal"
+                                aria-label="Resize code editor and output panels"
+                                onMouseDown={(event) => {
+                                    consoleResizeMetaRef.current = { startY: event.clientY, startHeight: consoleHeight };
+                                    setIsConsoleResizing(true);
+                                }}
+                                onDoubleClick={() => setConsoleHeight(240)}
+                                className={cn(
+                                    "h-2 cursor-row-resize shrink-0 bg-transparent mx-2.5"
+                                )}
+                            />
+
                             {/* Results & Console area */}
-                            <div className="h-[240px] border-b border-border/40 bg-black/40 flex flex-col shrink-0">
+                            <div className={cn(
+                                "mx-2.5 mb-2.5 rounded-xl border border-border/40 flex flex-col shrink-0 overflow-hidden",
+                                isDark ? "bg-slate-900" : "bg-slate-100"
+                            )}
+                            style={{ height: `${consoleHeight}px` }}
+                            >
                                 <Tabs defaultValue="output" className="flex-1 flex flex-col overflow-hidden">
-                                    <TabsList className="px-4 bg-muted/20 border-b border-border/40 flex items-center justify-start shrink-0 h-9 gap-4 bg-transparent rounded-none">
+                                    <TabsList className={cn(
+                                        "px-4 border-b border-border/40 flex items-center justify-start shrink-0 h-9 gap-4 rounded-none",
+                                        isDark ? "bg-slate-800" : "bg-slate-200"
+                                    )}>
                                         <TabsTrigger value="output" className="h-9 px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary transition-all rounded-none bg-transparent shadow-none">Output</TabsTrigger>
                                         <TabsTrigger value="input" className="h-9 px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary transition-all rounded-none bg-transparent shadow-none">Input</TabsTrigger>
                                         <div className="flex-1" />
                                         <Terminal size={14} className="text-muted-foreground/40" />
                                     </TabsList>
                                     <TabsContent value="input" className="flex-1 m-0 p-0 overflow-hidden outline-none">
-                                        <div className="flex flex-col h-full bg-muted/5">
-                                            <div className="px-3 py-1 bg-black/20 text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter">stdin</div>
+                                        <div className={cn("flex flex-col h-full", isDark ? "bg-muted/5" : "bg-white/80")}>
+                                            <div className={cn(
+                                                "px-3 py-1 text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter",
+                                                isDark ? "bg-black/20" : "bg-slate-100"
+                                            )}>stdin</div>
                                             <textarea
                                                 value={userInput}
                                                 onChange={(e) => setUserInput(e.target.value)}
                                                 placeholder="Enter input..."
-                                                className="flex-1 w-full bg-transparent p-3 text-[12px] font-mono text-slate-300 focus:outline-none resize-none placeholder:text-slate-700"
+                                                className={cn(
+                                                    "flex-1 w-full bg-transparent p-3 text-[12px] font-mono focus:outline-none resize-none",
+                                                    isDark ? "text-slate-300 placeholder:text-slate-700" : "text-slate-700 placeholder:text-slate-400"
+                                                )}
                                             />
                                         </div>
                                     </TabsContent>
                                     <TabsContent value="output" className="flex-1 m-0 p-0 overflow-hidden outline-none">
-                                        <ScrollArea className="h-full p-4 bg-black/20">
+                                        <ScrollArea className={cn("h-full p-4", isDark ? "bg-black/20" : "bg-white/80")}>
                                             <pre className="text-[13px] font-mono leading-relaxed">
                                                 {output ? (
-                                                    <code className={output.includes('[Error]') ? 'text-red-400' : 'text-green-400'}>
+                                                    <code className={output.includes('[Error]') ? (isDark ? 'text-red-400' : 'text-red-700') : (isDark ? 'text-green-400' : 'text-emerald-700')}>
                                                         {output}
                                                     </code>
                                                 ) : (
-                                                    <span className="text-slate-600 italic animate-pulse">Waiting for code execution...</span>
+                                                    <span className={cn("italic animate-pulse", isDark ? "text-slate-600" : "text-slate-500")}>Waiting for code execution...</span>
                                                 )}
                                             </pre>
                                         </ScrollArea>
@@ -851,16 +1225,19 @@ const MockInterview = () => {
                             </div>
 
                             {/* Coding Mode Submit Area */}
-                            <div className="p-6 bg-muted/30 backdrop-blur-sm shrink-0">
-                                <div className="flex gap-4 items-end">
+                            <div className={cn(
+                                "p-4 border-t border-border/40 backdrop-blur-sm shrink-0 rounded-b-2xl",
+                                isDark ? "bg-slate-900" : "bg-slate-100"
+                            )}>
+                                <div className="flex gap-3 items-end">
                                     <Button 
                                         variant="outline" 
                                         size="icon" 
                                         onClick={() => setShowSkipModal(true)}
                                         disabled={submitting || currentQuestionIndex >= questions.length}
-                                        className="h-[52px] w-[52px] shrink-0 border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 rounded-xl transition-all shadow-sm"
+                                        className="h-[46px] w-[46px] shrink-0 border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 rounded-xl transition-all shadow-sm"
                                     >
-                                        <XCircle size={24} strokeWidth={1.5} />
+                                        <XCircle size={20} strokeWidth={1.5} />
                                     </Button>
                                     
                                     <form onSubmit={(e) => {
@@ -868,7 +1245,7 @@ const MockInterview = () => {
                                         handleSubmit(e, `LANGUAGE: ${language}\n\nCODE:\n\`\`\`${language}\n${code}\n\`\`\`\n\nEXPLANATION:\n${answer}`);
                                     }} className="relative flex-1 group">
                                         <textarea
-                                            className="w-full bg-background/80 border border-border/40 rounded-xl px-5 py-3.5 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all resize-none min-h-[52px] max-h-32 shadow-sm"
+                                            className="w-full bg-background/80 border border-border/40 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all resize-none min-h-[46px] max-h-28 shadow-sm"
                                             value={answer}
                                             onChange={(e) => setAnswer(e.target.value)}
                                             placeholder="Explain your approach to submit code..."
@@ -883,17 +1260,18 @@ const MockInterview = () => {
                                         />
                                         <Button 
                                             size="icon" 
-                                            className="absolute right-2 bottom-2 h-9 w-9 rounded-lg shadow-md transition-all active:scale-95" 
+                                            className="absolute right-2 bottom-2 h-8 w-8 rounded-lg shadow-md transition-all active:scale-95" 
                                             disabled={!answer.trim() || submitting || currentQuestionIndex >= questions.length}
                                             type="submit"
                                         >
-                                            <Send size={16} />
+                                            <Send size={14} />
                                         </Button>
                                     </form>
                                 </div>
                             </div>
                         </div>
                     )}
+                </div>
                 </div>
             </Card>
 
