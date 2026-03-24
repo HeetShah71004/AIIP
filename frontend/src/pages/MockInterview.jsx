@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, Timer, Award, CheckCircle, ChevronLeft, ChevronRight, Loader2, XCircle, AlertCircle, LayoutGrid, User, Bot, Play, Code, Code2, Terminal, FileText, BookOpen, FlaskConical, History, ThumbsUp, ThumbsDown, MessageSquare, Star, Share2, HelpCircle, Maximize2, Minimize2 } from 'lucide-react';
-import { getSession, submitAnswer, getQuestionsFromBank } from '../api/interviewApi';
+import { Send, Timer, Award, CheckCircle, ChevronLeft, ChevronRight, Loader2, XCircle, AlertCircle, LayoutGrid, User, Bot, Play, Code, Code2, Terminal, FileText, BookOpen, FlaskConical, History, ThumbsUp, ThumbsDown, MessageSquare, Star, Share2, HelpCircle, Maximize2, Minimize2, Mic, StopCircle, AudioLines } from 'lucide-react';
+import { getSession, submitAnswer, getQuestionsFromBank, transcribeAudio } from '../api/interviewApi';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
+import InterviewTimer from '../components/InterviewTimer';
+import DifficultyBadge from '../components/DifficultyBadge';
 import Editor from '@monaco-editor/react';
 import { useTheme } from '../context/ThemeContext';
 import { Button } from "@/components/ui/button"
@@ -63,6 +65,9 @@ const MockInterview = () => {
     const [answer, setAnswer] = useState('');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [questionTimeStart, setQuestionTimeStart] = useState(null);
+    const [questionsTimeSpent, setQuestionsTimeSpent] = useState({});
+    const [timerExpired, setTimerExpired] = useState(false);
     const [code, setCode] = useState('// Your code here');
     const [language, setLanguage] = useState('javascript');
     const [userInput, setUserInput] = useState('');
@@ -81,6 +86,10 @@ const MockInterview = () => {
     const [consoleHeight, setConsoleHeight] = useState(240);
     const [isConsoleResizing, setIsConsoleResizing] = useState(false);
     const [isFullscreenMode, setIsFullscreenMode] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [lastTranscript, setLastTranscript] = useState(null);
+    const [speechLanguage, setSpeechLanguage] = useState('en-US');
     const { theme } = useTheme();
     const isDark = theme === 'dark';
     const scrollAreaRef = useRef(null);
@@ -90,6 +99,18 @@ const MockInterview = () => {
     const interviewContainerRef = useRef(null);
     const leftPaneResizeMetaRef = useRef({ startY: 0, startHeight: 46 });
     const consoleResizeMetaRef = useRef({ startY: 0, startHeight: 240 });
+    const mediaRecorderRef = useRef(null);
+    const mediaChunksRef = useRef([]);
+    const mediaStreamRef = useRef(null);
+    const recordingMimeTypeRef = useRef('audio/webm');
+    const speechRecognitionRef = useRef(null);
+    const browserTranscriptRef = useRef('');
+    const canRecordAudio = typeof window !== 'undefined' && !!window.MediaRecorder && !!navigator.mediaDevices?.getUserMedia;
+    const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+    const languageToWebSpeech = (lang) => {
+        if (lang === 'hi-IN') return 'hi-IN';
+        return 'en-US';
+    };
     const isFinished = chatHistory.some(m => m.isFinal);
     const shouldShowLiveFeedback = !isCodingMode || isFinished;
     const activeQuestion = questions[currentQuestionIndex];
@@ -171,6 +192,8 @@ const MockInterview = () => {
                     setCurrentQuestionIndex(completedCount);
                 }
                 setLoading(false);
+                setQuestionTimeStart(Date.now());
+                setTimerExpired(false);
             } catch (err) {
                 toast.error('Failed to load session');
                 navigate('/');
@@ -179,6 +202,13 @@ const MockInterview = () => {
         fetchInitialData();
     }, [sessionId, navigate]);
 
+    // Reset timer when question changes
+    useEffect(() => {
+        setQuestionTimeStart(Date.now());
+        setTimerExpired(false);
+    }, [currentQuestionIndex]);
+
+    // Scroll to bottom of chat when new messages arrive
     useEffect(() => {
         if (scrollAreaRef.current) {
             const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -188,6 +218,7 @@ const MockInterview = () => {
         }
     }, [chatHistory, submitting]);
 
+    // Global session timer
     useEffect(() => {
         const timer = setInterval(() => {
             setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
@@ -321,6 +352,178 @@ const MockInterview = () => {
         }
     }, [currentQuestionIndex, questions]);
 
+    useEffect(() => {
+        return () => {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+
+            if (speechRecognitionRef.current) {
+                try {
+                    speechRecognitionRef.current.stop();
+                } catch (_) {
+                    // no-op
+                }
+                speechRecognitionRef.current = null;
+            }
+
+            if (mediaStreamRef.current) {
+                mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+                mediaStreamRef.current = null;
+            }
+        };
+    }, []);
+
+    const handleStopRecording = () => {
+        if (speechRecognitionRef.current) {
+            try {
+                speechRecognitionRef.current.stop();
+            } catch (_) {
+                // no-op
+            }
+        }
+
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+    };
+
+    const handleToggleRecording = async () => {
+        if (isTranscribing || submitting || currentQuestionIndex >= questions.length || isCodingMode) {
+            return;
+        }
+
+        if (!canRecordAudio) {
+            toast.error('Audio recording is not supported in this browser');
+            return;
+        }
+
+        if (isRecording) {
+            handleStopRecording();
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStreamRef.current = stream;
+            mediaChunksRef.current = [];
+            browserTranscriptRef.current = '';
+
+            if (SpeechRecognition) {
+                const recognition = new SpeechRecognition();
+                recognition.lang = languageToWebSpeech(speechLanguage);
+                recognition.continuous = true;
+                recognition.interimResults = true;
+
+                recognition.onresult = (event) => {
+                    let assembled = '';
+                    for (let i = 0; i < event.results.length; i += 1) {
+                        assembled += `${event.results[i][0]?.transcript || ''} `;
+                    }
+                    browserTranscriptRef.current = assembled.trim();
+                };
+
+                speechRecognitionRef.current = recognition;
+                try {
+                    recognition.start();
+                } catch (_) {
+                    // no-op
+                }
+            }
+
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : 'audio/webm';
+
+            const recorder = new MediaRecorder(stream, { mimeType });
+            mediaRecorderRef.current = recorder;
+            recordingMimeTypeRef.current = recorder.mimeType || mimeType || 'audio/webm';
+
+            recorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    mediaChunksRef.current.push(event.data);
+                }
+            };
+
+            recorder.onstop = async () => {
+                setIsRecording(false);
+
+                if (mediaStreamRef.current) {
+                    mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+                    mediaStreamRef.current = null;
+                }
+
+                if (speechRecognitionRef.current) {
+                    try {
+                        speechRecognitionRef.current.stop();
+                    } catch (_) {
+                        // no-op
+                    }
+                }
+
+                if (mediaChunksRef.current.length === 0) {
+                    return;
+                }
+
+                const recordingMimeType = recordingMimeTypeRef.current || 'audio/webm';
+                const audioBlob = new Blob(mediaChunksRef.current, { type: recordingMimeType });
+                mediaChunksRef.current = [];
+                setIsTranscribing(true);
+
+                try {
+                    const response = await transcribeAudio({
+                        audioBlob,
+                        language: speechLanguage,
+                        diarize: true,
+                        detectLanguage: false,
+                        mimeType: recordingMimeType
+                    });
+
+                    const deepgramTranscript = response?.data?.transcript?.trim() || '';
+                    const browserTranscript = browserTranscriptRef.current.trim();
+                    const deepgramWordCount = (response?.data?.words || []).length;
+                    const deepgramConfidence = typeof response?.data?.confidence === 'number' ? response.data.confidence : null;
+
+                    let transcript = deepgramTranscript || browserTranscript;
+
+                    const browserWordCount = browserTranscript ? browserTranscript.split(/\s+/).filter(Boolean).length : 0;
+                    const deepgramLooksWeak = deepgramWordCount <= 1 || (deepgramConfidence !== null && deepgramConfidence < 0.35);
+                    if (browserTranscript && deepgramLooksWeak && browserWordCount >= 3) {
+                        transcript = browserTranscript;
+                    }
+
+                    if (!transcript) {
+                        toast.error('No speech detected. Please try again.');
+                        return;
+                    }
+
+                    setAnswer((prev) => {
+                        const prefix = prev.trim().length ? `${prev.trim()} ` : '';
+                        return `${prefix}${transcript}`;
+                    });
+
+                    setLastTranscript({
+                        text: transcript,
+                        confidence: response?.data?.confidence,
+                        words: response?.data?.words || [],
+                        speakerSegments: response?.data?.speakerSegments || []
+                    });
+
+                    toast.success('Transcript added to your answer');
+                } catch (error) {
+                    toast.error(error?.response?.data?.message || error.message || 'Speech-to-text failed');
+                } finally {
+                    setIsTranscribing(false);
+                }
+            };
+
+            recorder.start();
+            setIsRecording(true);
+        } catch (error) {
+            toast.error('Microphone permission was denied or unavailable');
+        }
+    };
+
     const handleRunCode = async () => {
         setIsRunning(true);
         setOutput('Compiling and running...\n');
@@ -369,9 +572,11 @@ const MockInterview = () => {
         setChatHistory(prev => [...prev, userMsg]);
 
         try {
+            const timeSpent = questionTimeStart ? Math.floor((Date.now() - questionTimeStart) / 1000) : 0;
             const res = await submitAnswer(sessionId, {
                 questionId: currentQuestion._id,
-                answer: '__SKIPPED__'
+                answer: '__SKIPPED__',
+                timeSpent
             });
 
             const evaluationData = res.data.feedback;
@@ -433,7 +638,7 @@ const MockInterview = () => {
         e.preventDefault();
         const finalAnswer = customAnswer || answer;
         if (!finalAnswer.trim() && !isCodingMode) return;
-        if (submitting) return;
+        if (submitting || isTranscribing) return;
 
         const currentQuestion = questions[currentQuestionIndex];
         const submittedAnswer = isCodingMode && !customAnswer ? `CODE SUBMITTED:\n\`\`\`${language}\n${code}\n\`\`\`\n\nEXPLANATION:\n${answer}` : finalAnswer;
@@ -453,6 +658,7 @@ const MockInterview = () => {
         setChatHistory(prev => [...prev, userMsg]);
 
         try {
+            const timeSpent = questionTimeStart ? Math.floor((Date.now() - questionTimeStart) / 1000) : 0;
             const token = localStorage.getItem('accessToken');
             const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api/v1';
             const response = await fetch(`${baseUrl}/sessions/${sessionId}/answer-stream`, {
@@ -463,7 +669,8 @@ const MockInterview = () => {
                 },
                 body: JSON.stringify({
                     questionId: currentQuestion._id,
-                    answer: submittedAnswer
+                    answer: submittedAnswer,
+                    timeSpent
                 })
             });
 
@@ -520,7 +727,9 @@ const MockInterview = () => {
                                 text: eventData.text,
                                 timestamp: new Date(),
                                 isQuestion: true,
-                                id: eventData._id
+                                id: eventData._id,
+                                difficulty: eventData.difficulty,
+                                timeLimit: eventData.timeLimit
                             }]);
                             
                             setQuestions(prev => {
@@ -528,11 +737,17 @@ const MockInterview = () => {
                                 updated[currentQuestionIndex].answer = submittedAnswer;
                                 updated[currentQuestionIndex].feedback = evaluationData;
                                 if (!updated.find(q => q._id === eventData._id)) {
-                                    updated.push(eventData);
+                                    updated.push({
+                                        ...eventData,
+                                        difficulty: eventData.difficulty || 'Medium',
+                                        timeLimit: eventData.timeLimit || 3
+                                    });
                                 }
                                 return updated;
                             });
                             setCurrentQuestionIndex(prev => prev + 1);
+                            setAnswer('');
+                            setCode('// Your code here');
                         } else if (eventType === 'final') {
                             setChatHistory(prev => [...prev, {
                                 type: 'ai',
@@ -587,6 +802,77 @@ const MockInterview = () => {
         } finally {
             setSubmitting(false);
             navigate(`/feedback/${sessionId}`);
+        }
+    };
+
+    const handleTimerExpired = async () => {
+        if (timerExpired || submitting || !activeQuestion) return;
+        
+        setTimerExpired(true);
+        setSubmitting(true);
+        
+        try {
+            const timeSpent = questionTimeStart ? Math.floor((Date.now() - questionTimeStart) / 1000) : 0;
+            const finalAnswer = isCodingMode ? code : answer;
+            
+            const res = await submitAnswer(sessionId, {
+                questionId: activeQuestion._id,
+                answer: finalAnswer || '__SKIPPED__',
+                timeSpent
+            });
+
+            const evaluationData = res.data.feedback;
+            const nextQuestion = res.data.nextQuestion;
+            
+            setChatHistory(prev => [...prev, {
+                type: 'user',
+                text: finalAnswer || '[No answer provided - Timer Expired]',
+                timestamp: new Date(),
+                id: Date.now() + '-user'
+            }, {
+                type: 'ai',
+                text: evaluationData.analysis,
+                timestamp: new Date(),
+                isFeedback: true,
+                score: evaluationData.score,
+                id: Date.now() + '-feedback'
+            }]);
+
+            if (currentQuestionIndex + 1 < questions.length) {
+                if (nextQuestion) {
+                    setChatHistory(prev => [...prev, {
+                        type: 'ai',
+                        text: nextQuestion.text,
+                        timestamp: new Date(),
+                        isQuestion: true,
+                        id: nextQuestion._id,
+                        difficulty: nextQuestion.difficulty,
+                        timeLimit: nextQuestion.timeLimit
+                    }]);
+                }
+                setCurrentQuestionIndex(prev => prev + 1);
+                setAnswer('');
+                setCode('// Your code here');
+                if (res.data.nextQuestion) {
+                    setSession(prev => ({...prev, difficultyRating: res.data.difficultyRating}));
+                }
+            } else {
+                setChatHistory(prev => [...prev, {
+                    type: 'ai',
+                    text: "That was the last question! You've completed the interview session.",
+                    timestamp: new Date(),
+                    isFinal: true,
+                    id: Date.now() + '-final'
+                }]);
+                const updatedSession = await getSession(sessionId);
+                setSession(updatedSession.data.session);
+            }
+        } catch (error) {
+            console.error('Timer expiry submit error:', error);
+            toast.error('Error submitting answer when timer expired');
+            setTimerExpired(false);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -835,8 +1121,19 @@ const MockInterview = () => {
                                                         </h2>
                                                     </div>
 
-                                                    <div className="flex flex-wrap gap-2">
-                                                        <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-none font-bold text-[10px] px-2.5 py-0.5 rounded-full">Easy</Badge>
+                                                    <div className="flex flex-wrap gap-3 items-start">
+                                                        <DifficultyBadge 
+                                                            difficulty={questions[currentQuestionIndex].difficulty || 'Medium'}
+                                                            eloRating={session?.difficultyRating}
+                                                        />
+                                                        {!timerExpired && (
+                                                            <InterviewTimer
+                                                                timeLimit={questions[currentQuestionIndex].timeLimit || 3}
+                                                                onTimeExpired={handleTimerExpired}
+                                                                isActive={!submitting && !isFinished}
+                                                                onTimeUpdate={() => {}}
+                                                            />
+                                                        )}
                                                     </div>
 
                                                     <div className={cn(
@@ -1006,6 +1303,30 @@ const MockInterview = () => {
                             </ScrollArea>
                         )}
 
+                        {/* Timer and Difficulty for non-coding mode */}
+                        {!isCodingMode && activeQuestion && !timerExpired && (
+                            <div className="px-8 py-4 border-t border-border/40 bg-muted/10 backdrop-blur-sm shrink-0">
+                                <div className="max-w-3xl mx-auto">
+                                    <div className="flex flex-wrap gap-4 items-start">
+                                        <div className="flex-1">
+                                            <DifficultyBadge 
+                                                difficulty={activeQuestion.difficulty || 'Medium'}
+                                                eloRating={session?.difficultyRating}
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <InterviewTimer
+                                                timeLimit={activeQuestion.timeLimit || 3}
+                                                onTimeExpired={handleTimerExpired}
+                                                isActive={!submitting && !isFinished}
+                                                onTimeUpdate={() => {}}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* LeetCode Style Footer for Coding Mode */}
 
                         {/* Traditional Input for non-coding mode */}
@@ -1021,14 +1342,50 @@ const MockInterview = () => {
                                     >
                                         <XCircle size={26} strokeWidth={1.5} />
                                     </Button>
+
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            value={speechLanguage}
+                                            onChange={(e) => setSpeechLanguage(e.target.value)}
+                                            disabled={isRecording || isTranscribing || submitting}
+                                            className="h-[56px] px-3 rounded-2xl border border-border/40 bg-background/60 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all shadow-sm"
+                                            title="Select language for speech recognition"
+                                        >
+                                            <option value="en-US">English</option>
+                                            <option value="hi-IN">Hindi</option>
+                                        </select>
+
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={handleToggleRecording}
+                                            disabled={!canRecordAudio || isTranscribing || submitting || currentQuestionIndex >= questions.length}
+                                            className={cn(
+                                                "h-[56px] w-[56px] shrink-0 rounded-2xl transition-all duration-300 shadow-sm",
+                                                isRecording
+                                                    ? "border-rose-500/40 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20"
+                                                    : "border-primary/15 bg-primary/[0.04] text-primary hover:bg-primary/10"
+                                            )}
+                                            title={isRecording ? 'Stop recording' : 'Start recording'}
+                                        >
+                                            {isTranscribing ? (
+                                                <Loader2 size={22} className="animate-spin" />
+                                            ) : isRecording ? (
+                                                <StopCircle size={22} strokeWidth={1.8} />
+                                            ) : (
+                                                <Mic size={22} strokeWidth={1.8} />
+                                            )}
+                                        </Button>
+                                    </div>
                                     
                                     <form onSubmit={(e) => handleSubmit(e)} className="relative flex-1 group">
                                         <textarea
                                             className="w-full bg-background/60 backdrop-blur-sm border border-border/40 rounded-2xl px-6 py-4 pr-16 text-base focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all duration-300 resize-none min-h-[56px] max-h-48 shadow-sm"
                                             value={answer}
                                             onChange={(e) => setAnswer(e.target.value)}
-                                            placeholder="Type your professional answer here..."
-                                            disabled={submitting || currentQuestionIndex >= questions.length}
+                                            placeholder={isRecording ? 'Listening... click stop to transcribe' : 'Type your professional answer here...'}
+                                            disabled={submitting || isTranscribing || currentQuestionIndex >= questions.length}
                                             rows={1}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -1040,12 +1397,47 @@ const MockInterview = () => {
                                         <Button 
                                             size="icon" 
                                             className="absolute right-2.5 bottom-2.5 h-10 w-10 rounded-xl shadow-lg shadow-primary/20 transition-all duration-300" 
-                                            disabled={!answer.trim() || submitting || currentQuestionIndex >= questions.length}
+                                            disabled={!answer.trim() || submitting || isTranscribing || currentQuestionIndex >= questions.length}
                                             type="submit"
                                         >
                                             <Send size={18} />
                                         </Button>
                                     </form>
+                                </div>
+
+                                <div className="max-w-3xl mx-auto mt-3 px-1">
+                                    {isTranscribing && (
+                                        <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                                            <AudioLines size={14} className="animate-pulse" />
+                                            Processing speech and building transcript...
+                                        </div>
+                                    )}
+
+                                    {!isTranscribing && lastTranscript?.text && (
+                                        <div className="rounded-xl border border-border/40 bg-background/60 px-3 py-2">
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Latest transcript</p>
+                                            <p className="mt-1 text-xs text-foreground/85 line-clamp-2">{lastTranscript.text}</p>
+                                            <p className="mt-1 text-[10px] text-muted-foreground">
+                                                Confidence: {typeof lastTranscript.confidence === 'number' ? `${(lastTranscript.confidence * 100).toFixed(1)}%` : 'n/a'} | Words: {lastTranscript.words.length} | Speakers: {new Set(lastTranscript.speakerSegments.map((segment) => segment.speaker)).size || 1}
+                                            </p>
+                                            {lastTranscript.words.length > 0 && (
+                                                <div className="mt-2 space-y-1">
+                                                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Word confidence</p>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {lastTranscript.words.map((w, i) => {
+                                                            const conf = typeof w.confidence === 'number' ? w.confidence : null;
+                                                            const confColor = conf === null ? 'bg-gray-400/20' : conf > 0.8 ? 'bg-green-500/10 text-green-600' : conf > 0.5 ? 'bg-yellow-500/10 text-yellow-600' : 'bg-red-500/10 text-red-600';
+                                                            return (
+                                                                <span key={i} className={cn('text-[9px] px-1.5 py-0.5 rounded border border-border/40', confColor)} title={conf ? `${(conf * 100).toFixed(0)}% confident` : 'unknown confidence'}>
+                                                                    {w.word}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

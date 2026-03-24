@@ -7,6 +7,7 @@ import {
     generateTargetedQuestions, 
     generateFollowUpQuestion 
 } from '../services/aiService.js';
+import { processAnswerDifficulty } from '../services/adaptiveDifficultyService.js';
 
 // Start a new interview session
 export const startSession = async (req, res) => {
@@ -142,6 +143,7 @@ export const submitAnswer = async (req, res) => {
     if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
 
     // Find or create the question entry for this session
+    const { timeSpent = 0 } = req.body;
     let question = await Question.findById(questionId);
     if (!question) {
         // If questionId was actually a QuestionBank ID, create a new Question instance
@@ -151,13 +153,16 @@ export const submitAnswer = async (req, res) => {
                 session: session._id,
                 questionBankId: bankQuestion._id,
                 text: bankQuestion.text,
-                answer
+                answer,
+                timeSpent,
+                difficulty: bankQuestion.difficulty || 'Medium'
             });
         } else {
             return res.status(404).json({ success: false, message: 'Question not found' });
         }
     } else {
         question.answer = answer;
+        question.timeSpent = timeSpent;
         await question.save();
     }
 
@@ -190,6 +195,12 @@ export const submitAnswer = async (req, res) => {
     } else {
         session.score = ((session.score * (session.completedQuestions - 1)) + evaluation.score) / session.completedQuestions;
     }
+
+    // Process adaptive difficulty: update session rating and calculate next difficulty
+    const currentDifficulty = question.difficulty || 'Medium';
+    const difficultyResult = processAnswerDifficulty(session, evaluation.score, currentDifficulty);
+    session.difficultyRating = difficultyResult.newRating;
+    const nextDifficulty = difficultyResult.nextDifficulty;
 
     const nextIndex = session.completedQuestions;
     if (nextIndex < session.totalQuestions) {
@@ -226,14 +237,18 @@ export const submitAnswer = async (req, res) => {
               questionBankId: bankQuestion[0]._id,
               text: bankQuestion[0].text,
               type: 'Coding',
-              codeTemplate: bankQuestion[0].codeTemplate
+              codeTemplate: bankQuestion[0].codeTemplate,
+              difficulty: nextDifficulty,
+              timeLimit: 3
             });
           } else {
             const generated = await generateTargetedQuestions(session.company, session.roleLevel, 'Coding', 1);
             nextQuestion = await Question.create({
               session: session._id,
               text: generated[0] || 'Solve this coding problem: find the longest substring without repeating characters.',
-              type: 'Coding'
+              type: 'Coding',
+              difficulty: nextDifficulty,
+              timeLimit: 3
             });
           }
         }
@@ -252,12 +267,16 @@ export const submitAnswer = async (req, res) => {
         if (nextQuestion) {
           nextQuestion.text = followUpText;
           nextQuestion.type = 'Technical';
+          nextQuestion.difficulty = nextDifficulty;
+          nextQuestion.timeLimit = 3;
           await nextQuestion.save();
         } else {
           await Question.create({
             session: session._id,
             text: followUpText,
-            type: 'Technical'
+            type: 'Technical',
+            difficulty: nextDifficulty,
+            timeLimit: 3
           });
         }
       }
@@ -269,9 +288,31 @@ export const submitAnswer = async (req, res) => {
     }
     await session.save();
 
+    // Prepare next question data if not completed
+    let nextQuestionData = null;
+    if (session.completedQuestions < session.totalQuestions) {
+      const nextQues = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
+      if (nextQues) {
+        nextQuestionData = {
+          _id: nextQues._id,
+          text: nextQues.text,
+          type: nextQues.type,
+          difficulty: nextQues.difficulty,
+          timeLimit: nextQues.timeLimit,
+          codeTemplate: nextQues.codeTemplate
+        };
+      }
+    }
+
     res.status(200).json({
       success: true,
-      data: question
+      data: question,
+      nextQuestion: nextQuestionData,
+      difficultyRating: session.difficultyRating,
+      sessionProgress: {
+        completed: session.completedQuestions,
+        total: session.totalQuestions
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -280,7 +321,7 @@ export const submitAnswer = async (req, res) => {
 
 // Streaming version of submitAnswer using SSE
 export const submitAnswerStream = async (req, res) => {
-  const { questionId, answer } = req.body;
+  const { questionId, answer, timeSpent = 0 } = req.body;
   const sessionId = req.params.id;
 
   // Set headers for SSE
@@ -318,8 +359,9 @@ export const submitAnswerStream = async (req, res) => {
       evaluation = await evaluateAnswer(question.text, answer);
     }
 
-    // Save evaluation
+    // Save evaluation and time spent
     question.answer = answer;
+    question.timeSpent = timeSpent;
     question.feedback = evaluation;
     await question.save();
 
@@ -328,6 +370,12 @@ export const submitAnswerStream = async (req, res) => {
     session.score = session.completedQuestions === 1 
       ? evaluation.score 
       : ((session.score * (session.completedQuestions - 1)) + evaluation.score) / session.completedQuestions;
+    
+    // Process adaptive difficulty
+    const currentDifficulty = question.difficulty || 'Medium';
+    const difficultyResult = processAnswerDifficulty(session, evaluation.score, currentDifficulty);
+    session.difficultyRating = difficultyResult.newRating;
+    const nextDifficulty = difficultyResult.nextDifficulty;
     
     if (session.completedQuestions >= session.totalQuestions) {
       session.status = 'completed';
@@ -375,14 +423,18 @@ export const submitAnswerStream = async (req, res) => {
               questionBankId: bankQuestion[0]._id,
               text: bankQuestion[0].text,
               type: 'Coding',
-              codeTemplate: bankQuestion[0].codeTemplate
+              codeTemplate: bankQuestion[0].codeTemplate,
+              difficulty: nextDifficulty,
+              timeLimit: 3
             });
           } else {
             const generated = await generateTargetedQuestions(session.company, session.roleLevel, 'Coding', 1);
             nextQuestion = await Question.create({
               session: session._id,
               text: generated[0] || 'Solve this coding problem: find the longest substring without repeating characters.',
-              type: 'Coding'
+              type: 'Coding',
+              difficulty: nextDifficulty,
+              timeLimit: 3
             });
           }
         }
@@ -397,12 +449,16 @@ export const submitAnswerStream = async (req, res) => {
         if (nextQuestion) {
           nextQuestion.text = followUpText;
           nextQuestion.type = 'Technical';
+          nextQuestion.difficulty = nextDifficulty;
+          nextQuestion.timeLimit = 3;
           await nextQuestion.save();
         } else {
           nextQuestion = await Question.create({
             session: session._id,
             text: followUpText,
-            type: 'Technical'
+            type: 'Technical',
+            difficulty: nextDifficulty,
+            timeLimit: 3
           });
         }
       }
@@ -412,6 +468,8 @@ export const submitAnswerStream = async (req, res) => {
         text: nextQuestion.text,
         _id: nextQuestion._id,
         type: nextQuestion.type,
+        difficulty: nextQuestion.difficulty,
+        timeLimit: nextQuestion.timeLimit,
         codeTemplate: nextQuestion.codeTemplate
       });
     } else {

@@ -10,6 +10,7 @@
 - **Realistic Conversations**: Engage in natural, context-aware dialogue with an AI interviewer.
 - **Company-Specific Prep**: Choose from top-tier companies (e.g., Google, Amazon, Meta, Netflix) to get tailored interview questions and scenarios.
 - **Role-Based Scenarios**: Prepare for specific roles such as Software Engineer, Frontend Developer, Backend Developer, or Full Stack Engineer.
+- **Speech-to-Text Answers**: Record spoken responses and convert them to text with word timestamps and optional speaker diarization.
 
 ### 📄 Resume-Driven Customization
 - **Intelligent Parsing**: Upload your resume (PDF or DOCX), and our AI will analyze your experience, skills, and projects to generate hyper-personalized interview questions.
@@ -110,6 +111,9 @@ CLOUDINARY_API_SECRET=your_api_secret
 # AI APIs
 GEMINI_API_KEY=your_gemini_api_key
 OPENAI_API_KEY=your_openai_api_key
+DEEPGRAM_API_KEY=your_deepgram_api_key
+DEEPGRAM_MODEL=nova-2
+DEEPGRAM_LANGUAGE=en-US
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your_google_client_id

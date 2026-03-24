@@ -31,6 +31,21 @@ const questionSchema = new mongoose.Schema({
     weaknesses: [String],
     suggestions: [String]
   },
+  timeLimit: {
+    type: Number,
+    default: 3,
+    min: 1,
+    max: 5
+  },
+  difficulty: {
+    type: String,
+    enum: ['Easy', 'Medium', 'Hard'],
+    default: 'Medium'
+  },
+  timeSpent: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now

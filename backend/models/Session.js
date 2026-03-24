@@ -45,7 +45,23 @@ const sessionSchema = new mongoose.Schema({
   },
   company: String,
   roleLevel: String,
-  interviewRound: String
+  interviewRound: String,
+  difficultyRating: {
+    type: Number,
+    default: 1400
+  },
+  difficultyConfig: {
+    ceiling: {
+      type: String,
+      enum: ['Easy', 'Medium', 'Hard'],
+      default: 'Hard'
+    },
+    floor: {
+      type: String,
+      enum: ['Easy', 'Medium', 'Hard'],
+      default: 'Easy'
+    }
+  }
 });
 
 export default mongoose.model('Session', sessionSchema);
