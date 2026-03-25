@@ -11,9 +11,9 @@ const MockChat = () => {
             {/* Window Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border/10 bg-foreground/[0.02]">
               <div className="flex gap-2">
-                <div className="w-3 h-3 rounded-full bg-foreground/20" />
-                <div className="w-3 h-3 rounded-full bg-foreground/20" />
-                <div className="w-3 h-3 rounded-full bg-foreground/20" />
+                <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
+                <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
+                <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
               </div>
               <div className="text-[10px] uppercase tracking-[0.2em] text-foreground/40 font-bold">Session ID: AI-742</div>
               <div className="w-9" />

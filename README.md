@@ -31,6 +31,7 @@
 - **Seamless Authentication**: Secure login and signup with Google OAuth and JWT-based session management.
 - **Thematic Consistency**: Fully responsive design with beautiful Dark and Light modes.
 - **Modern UI**: Built with Tailwind CSS and Radix UI for a sleek, accessible, and high-performance interface.
+- **Micro-Interactions**: Enhanced with Mac-style window icons and smooth scroll-to-top navigation for a premium, polished feel.
 
 ---
 

@@ -73,7 +73,14 @@ export const googleLogin = async (req, res, next) => {
     });
 
     const payload = ticket.getPayload();
-    const { sub, email, name, picture } = payload;
+    console.log('--- Google Login Debug ---');
+    console.log('Payload keys:', Object.keys(payload));
+    console.log('Name:', payload.name);
+    console.log('Picture:', payload.picture);
+    console.log('--- End Debug ---');
+    
+    const { sub, email, name } = payload;
+    const picture = payload.picture || payload.photo || payload.avatar || payload.picture_url;
 
     // Check if user exists
     let user = await User.findOne({ 
@@ -91,7 +98,9 @@ export const googleLogin = async (req, res, next) => {
         needsSave = true;
       }
       // Always update avatar from Google to keep it current
+      // Only update if picture is actually different and not empty
       if (picture && user.avatar !== picture) {
+        console.log('Updating user avatar from:', user.avatar, 'to:', picture);
         user.avatar = picture;
         needsSave = true;
       }
@@ -107,6 +116,7 @@ export const googleLogin = async (req, res, next) => {
         avatar: picture
         // password is not required when googleId is present
       });
+      console.log('Created new user with avatar:', picture);
     }
 
     sendTokenResponse(user, 200, res);

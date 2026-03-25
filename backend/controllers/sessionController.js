@@ -1,11 +1,11 @@
 import Session from '../models/Session.js';
 import Question from '../models/Question.js';
 import QuestionBank from '../models/QuestionBank.js';
-import { 
-    evaluateAnswer, 
-    generateQuestionsFromResume, 
-    generateTargetedQuestions, 
-    generateFollowUpQuestion 
+import {
+  evaluateAnswer,
+  generateQuestionsFromResume,
+  generateTargetedQuestions,
+  generateFollowUpQuestion
 } from '../services/aiService.js';
 import { processAnswerDifficulty } from '../services/adaptiveDifficultyService.js';
 
@@ -13,15 +13,15 @@ import { processAnswerDifficulty } from '../services/adaptiveDifficultyService.j
 export const startSession = async (req, res) => {
   try {
     const { totalQuestions = 5, category, difficulty, useResume = false, company, roleLevel, interviewRound } = req.body;
-    
+
     let initialQuestions = [];
     let resumeData = null;
 
     if (useResume) {
       // Find the latest session with resume data for this user
-      const lastResumeSession = await Session.findOne({ 
-        user: req.user.id, 
-        resumeText: { $exists: true } 
+      const lastResumeSession = await Session.findOne({
+        user: req.user.id,
+        resumeText: { $exists: true }
       }).sort({ createdAt: -1 });
 
       if (lastResumeSession) {
@@ -34,11 +34,11 @@ export const startSession = async (req, res) => {
       if (company) matchQuery.companyTags = { $in: [company] };
       if (roleLevel) matchQuery.roleLevel = roleLevel;
       if (interviewRound) {
-          if (interviewRound === 'Coding') {
-              matchQuery.type = 'Coding';
-          } else {
-              matchQuery.interviewRound = interviewRound;
-          }
+        if (interviewRound === 'Coding') {
+          matchQuery.type = 'Coding';
+        } else {
+          matchQuery.interviewRound = interviewRound;
+        }
       }
       if (category) matchQuery.category = category;
       if (difficulty) matchQuery.difficulty = difficulty;
@@ -47,24 +47,24 @@ export const startSession = async (req, res) => {
         { $match: matchQuery },
         { $sample: { size: totalQuestions } }
       ]);
-      
+
       if (bankQuestions.length < totalQuestions) {
         try {
           const needed = totalQuestions - bankQuestions.length;
           const generatedTextArray = await generateTargetedQuestions(company, roleLevel, interviewRound, needed);
-          
+
           // Save the generated questions back to QuestionBank to enrich the DB
           const newBankQuestions = await Promise.all(generatedTextArray.map(async text => {
-             const qt = interviewRound === 'Coding' ? 'Coding' : 'Technical';
-             return await QuestionBank.create({
-                text,
-                category: category || 'Fullstack',
-                difficulty: difficulty || 'Medium',
-                companyTags: company ? [company] : [],
-                roleLevel,
-                interviewRound,
-                type: qt
-             });
+            const qt = interviewRound === 'Coding' ? 'Coding' : 'Technical';
+            return await QuestionBank.create({
+              text,
+              category: category || 'Fullstack',
+              difficulty: difficulty || 'Medium',
+              companyTags: company ? [company] : [],
+              roleLevel,
+              interviewRound,
+              type: qt
+            });
           }));
           bankQuestions = [...bankQuestions, ...newBankQuestions];
         } catch (aiErr) {
@@ -72,8 +72,8 @@ export const startSession = async (req, res) => {
         }
       }
 
-      initialQuestions = bankQuestions.map(bq => ({ 
-        text: bq.text, 
+      initialQuestions = bankQuestions.map(bq => ({
+        text: bq.text,
         bankId: bq._id,
         type: bq.type,
         codeTemplate: bq.codeTemplate
@@ -93,13 +93,15 @@ export const startSession = async (req, res) => {
 
     // If we have initial questions (from resume), create Question entries
     if (initialQuestions.length > 0) {
-      const questionPromises = initialQuestions.map(q => 
+      const perQuestionTime = Math.ceil(30 / totalQuestions); // Assuming 30 mins total
+      const questionPromises = initialQuestions.map(q =>
         Question.create({
           session: session._id,
           text: q.text,
           questionBankId: q.bankId,
           type: q.type || 'Behavioral',
-          codeTemplate: q.codeTemplate
+          codeTemplate: q.codeTemplate,
+          timeLimit: perQuestionTime
         })
       );
       await Promise.all(questionPromises);
@@ -146,44 +148,44 @@ export const submitAnswer = async (req, res) => {
     const { timeSpent = 0 } = req.body;
     let question = await Question.findById(questionId);
     if (!question) {
-        // If questionId was actually a QuestionBank ID, create a new Question instance
-        const bankQuestion = await QuestionBank.findById(questionId);
-        if (bankQuestion) {
-            question = await Question.create({
-                session: session._id,
-                questionBankId: bankQuestion._id,
-                text: bankQuestion.text,
-                answer,
-                timeSpent,
-                difficulty: bankQuestion.difficulty || 'Medium'
-            });
-        } else {
-            return res.status(404).json({ success: false, message: 'Question not found' });
-        }
+      // If questionId was actually a QuestionBank ID, create a new Question instance
+      const bankQuestion = await QuestionBank.findById(questionId);
+      if (bankQuestion) {
+        question = await Question.create({
+          session: session._id,
+          questionBankId: bankQuestion._id,
+          text: bankQuestion.text,
+          answer,
+          timeSpent,
+          difficulty: bankQuestion.difficulty || 'Medium'
+        });
+      } else {
+        return res.status(404).json({ success: false, message: 'Question not found' });
+      }
     } else {
-        question.answer = answer;
-        question.timeSpent = timeSpent;
-        await question.save();
+      question.answer = answer;
+      question.timeSpent = timeSpent;
+      await question.save();
     }
 
     // Update session progress
     session.completedQuestions += 1;
-    
+
     let evaluation;
     if (answer === '__SKIPPED__') {
-        evaluation = {
-            score: 0,
-            clarity: 0,
-            depth: 0,
-            relevance: 0,
-            analysis: "Question skipped by user.",
-            strengths: [],
-            weaknesses: ["Question was skipped."],
-            suggestions: ["Try to answer all questions to get a better assessment."]
-        };
+      evaluation = {
+        score: 0,
+        clarity: 0,
+        depth: 0,
+        relevance: 0,
+        analysis: "Question skipped by user.",
+        strengths: [],
+        weaknesses: ["Question was skipped."],
+        suggestions: ["Try to answer all questions to get a better assessment."]
+      };
     } else {
-        // Evaluate the answer using AI Service
-        evaluation = await evaluateAnswer(question.text, answer);
+      // Evaluate the answer using AI Service
+      evaluation = await evaluateAnswer(question.text, answer);
     }
 
     question.feedback = evaluation;
@@ -191,9 +193,9 @@ export const submitAnswer = async (req, res) => {
 
     // Add evaluation score to session overall score (average)
     if (session.completedQuestions === 1) {
-        session.score = evaluation.score;
+      session.score = evaluation.score;
     } else {
-        session.score = ((session.score * (session.completedQuestions - 1)) + evaluation.score) / session.completedQuestions;
+      session.score = ((session.score * (session.completedQuestions - 1)) + evaluation.score) / session.completedQuestions;
     }
 
     // Process adaptive difficulty: update session rating and calculate next difficulty
@@ -204,9 +206,10 @@ export const submitAnswer = async (req, res) => {
 
     const nextIndex = session.completedQuestions;
     if (nextIndex < session.totalQuestions) {
+      let nextQuestion = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
+      
       if (session.interviewRound === 'Coding') {
         // For coding rounds, always keep the next question independent from previous answers.
-        let nextQuestion = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
 
         if (!nextQuestion) {
           const existingQuestions = await Question.find({ session: session._id }).select('questionBankId');
@@ -239,7 +242,7 @@ export const submitAnswer = async (req, res) => {
               type: 'Coding',
               codeTemplate: bankQuestion[0].codeTemplate,
               difficulty: nextDifficulty,
-              timeLimit: 3
+              timeLimit: Math.ceil(30 / session.totalQuestions)
             });
           } else {
             const generated = await generateTargetedQuestions(session.company, session.roleLevel, 'Coding', 1);
@@ -248,7 +251,7 @@ export const submitAnswer = async (req, res) => {
               text: generated[0] || 'Solve this coding problem: find the longest substring without repeating characters.',
               type: 'Coding',
               difficulty: nextDifficulty,
-              timeLimit: 3
+              timeLimit: Math.ceil(30 / session.totalQuestions)
             });
           }
         }
@@ -261,14 +264,12 @@ export const submitAnswer = async (req, res) => {
           followUpText = await generateFollowUpQuestion(question.text, answer, evaluation);
         }
 
-        // Check if there's already a next question placeholder
-        let nextQuestion = await Question.findOne({ session: session._id, answer: { $exists: false } }).sort({ createdAt: 1 });
-
+        const perQuestionTime = Math.ceil(30 / session.totalQuestions);
         if (nextQuestion) {
           nextQuestion.text = followUpText;
           nextQuestion.type = 'Technical';
           nextQuestion.difficulty = nextDifficulty;
-          nextQuestion.timeLimit = 3;
+          nextQuestion.timeLimit = perQuestionTime;
           await nextQuestion.save();
         } else {
           await Question.create({
@@ -276,15 +277,15 @@ export const submitAnswer = async (req, res) => {
             text: followUpText,
             type: 'Technical',
             difficulty: nextDifficulty,
-            timeLimit: 3
+            timeLimit: perQuestionTime
           });
         }
       }
     }
 
     if (session.completedQuestions >= session.totalQuestions) {
-        session.status = 'completed';
-        session.completedAt = Date.now();
+      session.status = 'completed';
+      session.completedAt = Date.now();
     }
     await session.save();
 
@@ -367,16 +368,16 @@ export const submitAnswerStream = async (req, res) => {
 
     // Update session
     session.completedQuestions += 1;
-    session.score = session.completedQuestions === 1 
-      ? evaluation.score 
+    session.score = session.completedQuestions === 1
+      ? evaluation.score
       : ((session.score * (session.completedQuestions - 1)) + evaluation.score) / session.completedQuestions;
-    
+
     // Process adaptive difficulty
     const currentDifficulty = question.difficulty || 'Medium';
     const difficultyResult = processAnswerDifficulty(session, evaluation.score, currentDifficulty);
     session.difficultyRating = difficultyResult.newRating;
     const nextDifficulty = difficultyResult.nextDifficulty;
-    
+
     if (session.completedQuestions >= session.totalQuestions) {
       session.status = 'completed';
       session.completedAt = Date.now();
@@ -425,7 +426,7 @@ export const submitAnswerStream = async (req, res) => {
               type: 'Coding',
               codeTemplate: bankQuestion[0].codeTemplate,
               difficulty: nextDifficulty,
-              timeLimit: 3
+              timeLimit: Math.ceil(30 / session.totalQuestions)
             });
           } else {
             const generated = await generateTargetedQuestions(session.company, session.roleLevel, 'Coding', 1);
@@ -434,7 +435,7 @@ export const submitAnswerStream = async (req, res) => {
               text: generated[0] || 'Solve this coding problem: find the longest substring without repeating characters.',
               type: 'Coding',
               difficulty: nextDifficulty,
-              timeLimit: 3
+              timeLimit: Math.ceil(30 / session.totalQuestions)
             });
           }
         }
@@ -446,11 +447,12 @@ export const submitAnswerStream = async (req, res) => {
           followUpText = await generateFollowUpQuestion(question.text, answer, evaluation);
         }
 
+        const perQuestionTime = Math.ceil(30 / session.totalQuestions);
         if (nextQuestion) {
           nextQuestion.text = followUpText;
           nextQuestion.type = 'Technical';
           nextQuestion.difficulty = nextDifficulty;
-          nextQuestion.timeLimit = 3;
+          nextQuestion.timeLimit = perQuestionTime;
           await nextQuestion.save();
         } else {
           nextQuestion = await Question.create({
@@ -458,7 +460,7 @@ export const submitAnswerStream = async (req, res) => {
             text: followUpText,
             type: 'Technical',
             difficulty: nextDifficulty,
-            timeLimit: 3
+            timeLimit: perQuestionTime
           });
         }
       }
@@ -489,7 +491,7 @@ export const deleteSession = async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
     if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
-    
+
     // Check if the session belongs to the user
     if (session.user.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this session' });
@@ -497,7 +499,7 @@ export const deleteSession = async (req, res) => {
 
     // Delete associated questions
     await Question.deleteMany({ session: session._id });
-    
+
     // Delete session
     await Session.findByIdAndDelete(req.params.id);
 

@@ -5,7 +5,6 @@ import { getSession, submitAnswer, getQuestionsFromBank, transcribeAudio } from 
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
-import InterviewTimer from '../components/InterviewTimer';
 import DifficultyBadge from '../components/DifficultyBadge';
 import Editor from '@monaco-editor/react';
 import { useTheme } from '../context/ThemeContext';
@@ -67,7 +66,6 @@ const MockInterview = () => {
     const [submitting, setSubmitting] = useState(false);
     const [questionTimeStart, setQuestionTimeStart] = useState(null);
     const [questionsTimeSpent, setQuestionsTimeSpent] = useState({});
-    const [timerExpired, setTimerExpired] = useState(false);
     const [code, setCode] = useState('// Your code here');
     const [language, setLanguage] = useState('javascript');
     const [userInput, setUserInput] = useState('');
@@ -193,7 +191,6 @@ const MockInterview = () => {
                 }
                 setLoading(false);
                 setQuestionTimeStart(Date.now());
-                setTimerExpired(false);
             } catch (err) {
                 toast.error('Failed to load session');
                 navigate('/');
@@ -205,7 +202,6 @@ const MockInterview = () => {
     // Reset timer when question changes
     useEffect(() => {
         setQuestionTimeStart(Date.now());
-        setTimerExpired(false);
     }, [currentQuestionIndex]);
 
     // Scroll to bottom of chat when new messages arrive
@@ -218,13 +214,30 @@ const MockInterview = () => {
         }
     }, [chatHistory, submitting]);
 
-    // Global session timer
+    // Global session timer: Recalculate based on absolute session start time and penalties
     useEffect(() => {
-        const timer = setInterval(() => {
-            setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
-        }, 1000);
+        if (!session?.createdAt) {
+            // Fallback for initial load before session data arrives
+            const timer = setInterval(() => {
+                setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+
+        const updateTimer = () => {
+            const sessionDuration = 1800; // 30 mins
+            const createdTime = new Date(session.createdAt).getTime();
+            const currentTime = Date.now();
+            const elapsedSeconds = Math.floor((currentTime - createdTime) / 1000);
+            const penalty = session.timePenalty || 0;
+            const newTimeLeft = Math.max(0, sessionDuration - elapsedSeconds - penalty);
+            setTimeLeft(newTimeLeft);
+        };
+
+        updateTimer();
+        const timer = setInterval(updateTimer, 1000);
         return () => clearInterval(timer);
-    }, []);
+    }, [session?.createdAt, session?.timePenalty]);
 
     useEffect(() => {
         if (!isResizing) return;
@@ -336,6 +349,8 @@ const MockInterview = () => {
             toast.error('Fullscreen is not supported in this browser');
         }
     };
+
+
 
     useEffect(() => {
         if (questions[currentQuestionIndex]) {
@@ -573,6 +588,7 @@ const MockInterview = () => {
 
         try {
             const timeSpent = questionTimeStart ? Math.floor((Date.now() - questionTimeStart) / 1000) : 0;
+            
             const res = await submitAnswer(sessionId, {
                 questionId: currentQuestion._id,
                 answer: '__SKIPPED__',
@@ -805,76 +821,7 @@ const MockInterview = () => {
         }
     };
 
-    const handleTimerExpired = async () => {
-        if (timerExpired || submitting || !activeQuestion) return;
-        
-        setTimerExpired(true);
-        setSubmitting(true);
-        
-        try {
-            const timeSpent = questionTimeStart ? Math.floor((Date.now() - questionTimeStart) / 1000) : 0;
-            const finalAnswer = isCodingMode ? code : answer;
-            
-            const res = await submitAnswer(sessionId, {
-                questionId: activeQuestion._id,
-                answer: finalAnswer || '__SKIPPED__',
-                timeSpent
-            });
 
-            const evaluationData = res.data.feedback;
-            const nextQuestion = res.data.nextQuestion;
-            
-            setChatHistory(prev => [...prev, {
-                type: 'user',
-                text: finalAnswer || '[No answer provided - Timer Expired]',
-                timestamp: new Date(),
-                id: Date.now() + '-user'
-            }, {
-                type: 'ai',
-                text: evaluationData.analysis,
-                timestamp: new Date(),
-                isFeedback: true,
-                score: evaluationData.score,
-                id: Date.now() + '-feedback'
-            }]);
-
-            if (currentQuestionIndex + 1 < questions.length) {
-                if (nextQuestion) {
-                    setChatHistory(prev => [...prev, {
-                        type: 'ai',
-                        text: nextQuestion.text,
-                        timestamp: new Date(),
-                        isQuestion: true,
-                        id: nextQuestion._id,
-                        difficulty: nextQuestion.difficulty,
-                        timeLimit: nextQuestion.timeLimit
-                    }]);
-                }
-                setCurrentQuestionIndex(prev => prev + 1);
-                setAnswer('');
-                setCode('// Your code here');
-                if (res.data.nextQuestion) {
-                    setSession(prev => ({...prev, difficultyRating: res.data.difficultyRating}));
-                }
-            } else {
-                setChatHistory(prev => [...prev, {
-                    type: 'ai',
-                    text: "That was the last question! You've completed the interview session.",
-                    timestamp: new Date(),
-                    isFinal: true,
-                    id: Date.now() + '-final'
-                }]);
-                const updatedSession = await getSession(sessionId);
-                setSession(updatedSession.data.session);
-            }
-        } catch (error) {
-            console.error('Timer expiry submit error:', error);
-            toast.error('Error submitting answer when timer expired');
-            setTimerExpired(false);
-        } finally {
-            setSubmitting(false);
-        }
-    };
 
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -1115,25 +1062,17 @@ const MockInterview = () => {
                                         <div className="mx-auto p-6 space-y-4 max-w-3xl">
                                             {questions[currentQuestionIndex] && (
                                                 <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-700">
-                                                    <div className="flex items-center justify-between">
+                                                    <div className="flex items-center justify-between pb-2 border-b border-border/20">
                                                         <h2 className="text-2xl font-bold tracking-tight text-foreground/90 leading-tight">
                                                             {currentQuestionIndex + 1}. {questions[currentQuestionIndex].title || "Problem Description"}
                                                         </h2>
-                                                    </div>
-
-                                                    <div className="flex flex-wrap gap-3 items-start">
-                                                        <DifficultyBadge 
-                                                            difficulty={questions[currentQuestionIndex].difficulty || 'Medium'}
-                                                            eloRating={session?.difficultyRating}
-                                                        />
-                                                        {!timerExpired && (
-                                                            <InterviewTimer
-                                                                timeLimit={questions[currentQuestionIndex].timeLimit || 3}
-                                                                onTimeExpired={handleTimerExpired}
-                                                                isActive={!submitting && !isFinished}
-                                                                onTimeUpdate={() => {}}
+                                                        <div className="flex items-center gap-3">
+                                                            <DifficultyBadge 
+                                                                difficulty={questions[currentQuestionIndex].difficulty || 'Medium'}
+                                                                eloRating={session?.difficultyRating}
                                                             />
-                                                        )}
+
+                                                        </div>
                                                     </div>
 
                                                     <div className={cn(
@@ -1223,9 +1162,18 @@ const MockInterview = () => {
                                 <div className="mx-auto w-full max-w-4xl p-4 md:p-6 space-y-5 md:space-y-6">
                                     <Card className="border-border/50 shadow-sm bg-card/90 overflow-hidden">
                                         <CardHeader className="pb-3 border-b border-border/40 bg-muted/20">
-                                            <CardTitle className="text-[11px] tracking-[0.15em] uppercase text-muted-foreground font-bold flex items-center gap-2">
-                                                <FileText size={14} className="text-primary" /> Interview Question
-                                            </CardTitle>
+                                            <div className="flex items-center justify-between shrink-0">
+                                                <CardTitle className="text-[11px] tracking-[0.15em] uppercase text-muted-foreground font-bold flex items-center gap-2">
+                                                    <FileText size={14} className="text-primary" /> Interview Question
+                                                </CardTitle>
+                                                <div className="flex items-center gap-3">
+                                                    <DifficultyBadge 
+                                                        difficulty={questions[currentQuestionIndex]?.difficulty || 'Medium'} 
+                                                        compact={true}
+                                                    />
+
+                                                </div>
+                                            </div>
                                         </CardHeader>
                                         <CardContent className="p-5 md:p-6 space-y-4">
                                             <div className="flex flex-wrap items-center gap-2">
@@ -1304,28 +1252,7 @@ const MockInterview = () => {
                         )}
 
                         {/* Timer and Difficulty for non-coding mode */}
-                        {!isCodingMode && activeQuestion && !timerExpired && (
-                            <div className="px-8 py-4 border-t border-border/40 bg-muted/10 backdrop-blur-sm shrink-0">
-                                <div className="max-w-3xl mx-auto">
-                                    <div className="flex flex-wrap gap-4 items-start">
-                                        <div className="flex-1">
-                                            <DifficultyBadge 
-                                                difficulty={activeQuestion.difficulty || 'Medium'}
-                                                eloRating={session?.difficultyRating}
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <InterviewTimer
-                                                timeLimit={activeQuestion.timeLimit || 3}
-                                                onTimeExpired={handleTimerExpired}
-                                                isActive={!submitting && !isFinished}
-                                                onTimeUpdate={() => {}}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        {/* Bottom badges removed - now in header */}
 
                         {/* LeetCode Style Footer for Coding Mode */}
 

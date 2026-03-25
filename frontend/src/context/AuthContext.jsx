@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const res = await api.get('/auth/me');
+          console.log('Session restored user data:', res.data.data);
           setUser(res.data.data);
         } catch (err) {
           console.error('Failed to load user', err);
@@ -41,6 +42,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('accessToken', res.data.accessToken);
     localStorage.setItem('refreshToken', res.data.refreshToken);
     const userData = res.data.data || res.data.user || (res.data.email ? res.data : null);
+    console.log('Google login user data receipt:', userData);
+    console.log('Avatar URL being used:', userData?.avatar);
     setUser(userData);
     return res.data;
   };

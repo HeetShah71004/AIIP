@@ -13,6 +13,13 @@ const LandingNavbar = ({ onLogin, onSignup }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleLogoClick = (e) => {
+    if (window.location.pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <nav 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -21,7 +28,11 @@ const LandingNavbar = ({ onLogin, onSignup }) => {
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group transition-transform hover:scale-[1.02]">
+        <Link 
+          to="/" 
+          onClick={handleLogoClick}
+          className="flex items-center gap-2 group transition-transform hover:scale-[1.02]"
+        >
           <span className="text-2xl font-bold tracking-tighter text-[#14b8a6]">Interv</span>
           <div className="bg-[#1a1a1a] px-2 py-0.5 rounded-md border border-white/[0.08]">
             <span className="text-lg font-bold text-white">AI</span>

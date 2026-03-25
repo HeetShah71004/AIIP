@@ -3,17 +3,17 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const DifficultyBadge = ({ difficulty = 'Medium', eloRating = 1400 }) => {
+const DifficultyBadge = ({ difficulty = 'Medium', eloRating = 1400, compact = false }) => {
   const getDifficultyColor = () => {
     switch(difficulty) {
       case 'Easy':
-        return 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200';
+        return 'bg-green-100/80 text-green-700 border-green-200 hover:bg-green-100';
       case 'Medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200';
+        return 'bg-amber-100/80 text-amber-700 border-amber-200 hover:bg-amber-100';
       case 'Hard':
-        return 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200';
+        return 'bg-rose-100/80 text-rose-700 border-rose-200 hover:bg-rose-100';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 
@@ -31,19 +31,15 @@ const DifficultyBadge = ({ difficulty = 'Medium', eloRating = 1400 }) => {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={cn("flex gap-2", compact ? "flex-row items-center" : "flex-col")}>
       <Badge 
         variant="outline"
-        className={cn("flex items-center gap-1 px-3 py-1", getDifficultyColor())}
+        className={cn("flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider", getDifficultyColor())}
       >
         {getDifficultyIcon()}
-        <span className="font-semibold">{difficulty}</span>
+        <span>{difficulty}</span>
       </Badge>
-      {eloRating && (
-        <div className="text-xs text-muted-foreground">
-          <span className="inline-block">Elo: {eloRating}</span>
-        </div>
-      )}
+      {/* Elo display removed per user request */}
     </div>
   );
 };

@@ -4,13 +4,15 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 const InterviewTimer = ({ 
-  timeLimit = 3, // in minutes
+  timeLimit = 3, // in minutes (used as fallback or for totalSeconds calculation)
+  initialSeconds = null, // exact seconds to start from
   onTimeExpired = () => {},
   isActive = true,
   isPaused = false,
-  onTimeUpdate = () => {}
+  onTimeUpdate = () => {},
+  compact = false
 }) => {
-  const [timeRemaining, setTimeRemaining] = useState(timeLimit * 60); // Convert to seconds
+  const [timeRemaining, setTimeRemaining] = useState(initialSeconds !== null ? initialSeconds : timeLimit * 60);
   const [isExpired, setIsExpired] = useState(false);
   const onTimeExpiredRef = useRef(onTimeExpired);
   const onTimeUpdateRef = useRef(onTimeUpdate);
@@ -73,11 +75,36 @@ const InterviewTimer = ({
     return () => clearInterval(interval);
   }, [isActive, isPaused, isExpired]);
 
-  // Reset when timeLimit changes (new question)
+  // Reset when timeLimit or initialSeconds changes (new question)
   useEffect(() => {
-    setTimeRemaining(timeLimit * 60);
+    setTimeRemaining(initialSeconds !== null ? initialSeconds : timeLimit * 60);
     setIsExpired(false);
-  }, [timeLimit]);
+  }, [timeLimit, initialSeconds]);
+
+  if (compact) {
+    return (
+      <div className={cn(
+        "flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all duration-500 shadow-sm",
+        isExpired ? "bg-rose-50 border-rose-200 text-rose-600" : "bg-emerald-50/50 border-emerald-100 text-emerald-600"
+      )}>
+        <div className="flex items-center gap-2">
+          <Clock size={14} className={cn(isExpired && "animate-pulse")} />
+          <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Time</span>
+        </div>
+        <div className="flex items-center gap-2">
+           <span className="text-sm font-bold tabular-nums tracking-tight">
+            {formatTime(timeRemaining)}
+          </span>
+          <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden hidden sm:block">
+            <div
+              className={cn("h-full transition-all duration-700 ease-out", getProgressColor())}
+              style={{ width: `${percentageRemaining}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(

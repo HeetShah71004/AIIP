@@ -35,7 +35,7 @@ const questionSchema = new mongoose.Schema({
     type: Number,
     default: 3,
     min: 1,
-    max: 5
+    max: 30
   },
   difficulty: {
     type: String,

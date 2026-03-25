@@ -246,7 +246,8 @@ export const generateQuestionsFromResume = async (resumeData, totalQuestions = 5
       const response = await result.response;
       const text = response.text();
 
-      return extractJson(text).questions;
+      const questions = extractJson(text).questions;
+      return Array.isArray(questions) ? questions : [];
     } catch (error) {
       console.error('Gemini Question Generation Error:', error.message);
     }
@@ -338,7 +339,8 @@ export const generateTargetedQuestions = async (company, roleLevel, interviewRou
       const response = await result.response;
       const text = response.text();
 
-      return extractJson(text).questions;
+      const questions = extractJson(text).questions;
+      return Array.isArray(questions) ? questions : [];
     } catch (error) {
       console.error('Gemini Targeted Generation Error:', error.message);
     }
