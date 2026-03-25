@@ -119,6 +119,13 @@ export const evaluateAnswer = async (question, answer) => {
     Question: "${question}"
     User Answer: "${answer}"
     
+    SPECIAL INSTRUCTION FOR CODING QUESTIONS:
+    If the User Answer contains "EXECUTION OUTPUT", it means this is a coding question. 
+    - CRITICAL: Prioritize the "EXECUTION OUTPUT" over the code structure. 
+    - If the output matches the expected result described in the question, the score should be high (8-10), even if the code isn't perfect.
+    - If the output is empty or shows an error, the score should be low (0-4) unless the explanation provides strong reasoning.
+    - Do not spend too much time critiquing code style; focus on whether the problem was solved correctly based on the output.
+
     Provide a detailed evaluation in JSON format with exactly the following fields:
     - score (number, 0-10)
     - clarity (number, 0-10)
