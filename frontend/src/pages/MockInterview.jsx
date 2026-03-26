@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, Timer, Award, CheckCircle, ChevronLeft, ChevronRight, Loader2, XCircle, AlertCircle, LayoutGrid, User, Bot, Play, Code, Code2, Terminal, FileText, BookOpen, FlaskConical, History, ThumbsUp, ThumbsDown, MessageSquare, Star, Share2, HelpCircle, Maximize2, Minimize2, Mic, StopCircle, AudioLines, Settings2 } from 'lucide-react';
+import { Send, Timer, Award, CheckCircle, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Loader2, XCircle, AlertCircle, LayoutGrid, User, Bot, Play, Code, Code2, Terminal, FileText, BookOpen, FlaskConical, History, ThumbsUp, ThumbsDown, MessageSquare, Star, Share2, HelpCircle, Maximize2, Minimize2, Mic, StopCircle, AudioLines, Settings2 } from 'lucide-react';
 import { getSession, submitAnswer, getQuestionsFromBank, transcribeAudio } from '../api/interviewApi';
 import api from '../api/client';
 import toast from 'react-hot-toast';
@@ -95,6 +95,16 @@ const MockInterview = () => {
     const [showSkipModal, setShowSkipModal] = useState(false);
     const [showExitModal, setShowExitModal] = useState(false);
     const [selectedPastQuestion, setSelectedPastQuestion] = useState(null);
+    const [expandedCards, setExpandedCards] = useState({});
+    const [expandedCodeBlocks, setExpandedCodeBlocks] = useState({});
+    
+    const toggleCard = (idx) => {
+        setExpandedCards(prev => ({ ...prev, [idx]: !prev[idx] }));
+    };
+
+    const toggleCodeBlock = (idx) => {
+        setExpandedCodeBlocks(prev => ({ ...prev, [idx]: !prev[idx] }));
+    };
     // UI layout state
     const [isFullscreenMode, setIsFullscreenMode] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
@@ -147,6 +157,11 @@ const MockInterview = () => {
         const words = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"];
         if (n >= 1 && n <= words.length) return words[n - 1];
         return `${n}th`;
+    };
+
+    const stripHtml = (html) => {
+        if (!html) return "";
+        return html.replace(/<[^>]*>?/gm, '').trim();
     };
 
     useEffect(() => {
@@ -800,27 +815,29 @@ const MockInterview = () => {
                 </div>
 
                 {/* Centered Indicators */}
-                <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-12">
-                    <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-2">
-                            <Timer size={13} className="text-[#4d6bfe]" />
-                            <span className={cn("text-sm font-bold tracking-tight", isDark ? "text-white" : "text-slate-900")}>
-                                {formatTime(timeLeft)}
-                            </span>
+                {!isFinished && (
+                    <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-12">
+                        <div className="flex flex-col items-center">
+                            <div className="flex items-center gap-2">
+                                <Timer size={13} className="text-[#4d6bfe]" />
+                                <span className={cn("text-sm font-bold tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                                    {formatTime(timeLeft)}
+                                </span>
+                            </div>
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Time Remaining</p>
                         </div>
-                        <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Time Remaining</p>
-                    </div>
-                    <div className="h-8 w-px bg-border/40" />
-                    <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-2">
-                            <span className={cn("text-sm font-bold tracking-tight", isDark ? "text-white" : "text-slate-900")}>
-                                {currentQuestionIndex + 1} / {questions.length}
-                            </span>
-                            <Progress value={(currentQuestionIndex / questions.length) * 100} className="h-1.5 w-16" />
+                        <div className="h-8 w-px bg-border/40" />
+                        <div className="flex flex-col items-center">
+                            <div className="flex items-center gap-2">
+                                <span className={cn("text-sm font-bold tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                                    {currentQuestionIndex + 1} / {questions.length}
+                                </span>
+                                <Progress value={(currentQuestionIndex / questions.length) * 100} className="h-1.5 w-16" />
+                            </div>
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Progress</p>
                         </div>
-                        <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Progress</p>
                     </div>
-                </div>
+                )}
 
                 <div className="flex items-center gap-3">
                     {isFinished && (
@@ -875,7 +892,7 @@ const MockInterview = () => {
                                                         "text-2xl font-bold tracking-tight",
                                                         isDark ? "text-white" : "text-slate-900"
                                                     )}>
-                                                        {currentQuestionIndex + 1}. {questions[currentQuestionIndex].title || "Interview Case"}
+                                                        {questions[currentQuestionIndex].title || `Question ${currentQuestionIndex + 1}`}
                                                     </h2>
                                                     {questions[currentQuestionIndex] && (
                                                         <DifficultyBadge 
@@ -1163,7 +1180,7 @@ const MockInterview = () => {
                         "flex-1 overflow-y-auto px-6 py-12 transition-colors duration-300",
                         isDark ? "bg-[#0a0a0b]" : "bg-slate-50/50"
                     )}>
-                        <div className="max-w-5xl mx-auto space-y-12">
+                        <div className="max-w-[1400px] mx-auto space-y-12">
                             <div className="text-center space-y-4 mb-16">
                                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#4d6bfe]/10 text-[#4d6bfe] border border-[#4d6bfe]/20 text-[10px] font-bold uppercase tracking-widest mb-4">
                                     <Award size={14} />
@@ -1173,99 +1190,162 @@ const MockInterview = () => {
                                 <p className="text-muted-foreground max-w-2xl mx-auto">Great work! Here's a comprehensive breakdown of your performance across all interview rounds. Review the AI analysis to improve your coding and problem-solving skills.</p>
                             </div>
 
-                            <div className="grid gap-10">
-                                {questions.map((q, idx) => (
-                                    <Card key={idx} className={cn(
-                                        "overflow-hidden border-none shadow-xl transition-all duration-300",
-                                        isDark ? "bg-[#18181b]/50 hover:bg-[#18181b]/80" : "bg-white hover:shadow-2xl"
-                                    )}>
-                                        <div className={cn(
-                                            "p-6 flex items-center justify-between border-b",
-                                            isDark ? "bg-[#252528]/30 border-white/[0.03]" : "bg-slate-50 border-slate-100"
-                                        )}>
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-[#4d6bfe] flex items-center justify-center text-white text-lg font-black shadow-lg shadow-[#4d6bfe]/20">
-                                                    {idx + 1}
-                                                </div>
-                                                <div>
-                                                    <h3 className={cn("text-lg font-bold", isDark ? "text-white" : "text-slate-900")}>{q.title || "Interview Case"}</h3>
-                                                    <div className="flex items-center gap-3 mt-1">
-                                                        <DifficultyBadge difficulty={q.difficulty || 'Medium'} />
-                                                        <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-widest border-emerald-500/20 text-emerald-500 bg-emerald-500/5">Coding Round</Badge>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {q.feedback && (
-                                                <Badge className={cn(
-                                                    "px-4 py-2 rounded-xl text-lg font-black shadow-lg",
-                                                    q.feedback.score >= 7 ? "bg-emerald-500 text-white shadow-emerald-500/20" : 
-                                                    q.feedback.score >= 4 ? "bg-amber-500 text-white shadow-amber-500/20" : 
-                                                    "bg-red-500 text-white shadow-red-500/20"
-                                                )}>
-                                                    {q.feedback.score}/10
-                                                </Badge>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {questions.map((q, idx) => {
+                                    const isExpanded = !!expandedCards[idx];
+                                    return (
+                                        <Card 
+                                            key={idx} 
+                                            onClick={() => toggleCard(idx)}
+                                            className={cn(
+                                                "overflow-hidden border-none shadow-xl transition-all duration-500 cursor-pointer group hover:scale-[1.01] flex flex-col",
+                                                isDark ? "bg-[#18181b]/50 hover:bg-[#18181b]/80" : "bg-white hover:shadow-2xl",
+                                                isExpanded ? "md:col-span-2 lg:col-span-3" : "col-span-1"
                                             )}
-                                        </div>
-                                        <CardContent className="p-8 space-y-10">
-                                            <div className="grid lg:grid-cols-2 gap-10">
-                                                <div className="space-y-6">
-                                                    <div className="space-y-3">
-                                                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                                            <FileText size={12} className="text-[#4d6bfe]" />
-                                                            Question
-                                                        </h4>
-                                                        <div className={cn(
-                                                            "p-5 rounded-2xl text-sm leading-relaxed border",
-                                                            isDark ? "bg-zinc-900 border-white/5 text-zinc-300" : "bg-slate-50 border-slate-200 text-slate-700"
-                                                        )}>
-                                                            <div dangerouslySetInnerHTML={{ __html: q.text }} />
-                                                        </div>
+                                        >
+                                            <div className={cn(
+                                                "p-6 flex items-center justify-between border-b transition-colors duration-300",
+                                                isDark ? "bg-[#252528]/30 border-white/[0.03]" : "bg-slate-50 border-slate-100",
+                                                isExpanded && "bg-[#4d6bfe]/5"
+                                            )}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-[#4d6bfe] flex items-center justify-center text-white text-lg font-black shadow-lg shadow-[#4d6bfe]/20">
+                                                        {idx + 1}
                                                     </div>
-
-                                                    <div className="space-y-3">
-                                                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                                            <User size={12} className="text-[#4d6bfe]" />
-                                                            Your Response
-                                                        </h4>
-                                                        <div className={cn(
-                                                            "p-5 rounded-2xl text-sm leading-relaxed border shadow-inner",
-                                                            isDark ? "bg-zinc-950/80 border-white/5 text-emerald-400 font-mono" : "bg-slate-900 text-emerald-400 font-mono"
-                                                        )}>
-                                                            <pre className="whitespace-pre-wrap break-all">{q.answer === '__SKIPPED__' ? '[Question Skipped]' : q.answer}</pre>
+                                                    <div>
+                                                        <h3 className={cn("text-lg font-bold flex items-center gap-2", isDark ? "text-white" : "text-slate-900")}>
+                                                            {q.title || "Interview Case"}
+                                                            {isExpanded ? <ChevronUp size={16} className="text-[#4d6bfe]" /> : <ChevronDown size={16} className="text-muted-foreground opacity-30 group-hover:opacity-100 transition-opacity" />}
+                                                        </h3>
+                                                        <div className="flex items-center gap-3 mt-1">
+                                                            <DifficultyBadge difficulty={q.difficulty || 'Medium'} />
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                <div className="space-y-6">
-                                                    <div className="space-y-3 h-full flex flex-col">
-                                                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                                            <Bot size={12} className="text-[#4d6bfe]" />
-                                                            AI Detailed Analysis
-                                                        </h4>
-                                                        <div className={cn(
-                                                            "flex-1 p-6 rounded-2xl text-base leading-relaxed border relative overflow-hidden",
-                                                            isDark ? "bg-[#4d6bfe]/5 border-[#4d6bfe]/20 text-white" : "bg-[#4d6bfe]/5 border-[#4d6bfe]/10 text-slate-800"
+                                                <div className="flex items-center gap-4">
+                                                    {q.feedback && (
+                                                        <Badge className={cn(
+                                                            "px-4 py-2 rounded-xl text-lg font-black shadow-lg",
+                                                            q.feedback.score >= 7 ? "bg-emerald-500 text-white shadow-emerald-500/20" : 
+                                                            q.feedback.score >= 4 ? "bg-amber-500 text-white shadow-amber-500/20" : 
+                                                            "bg-red-500 text-white shadow-red-500/20"
                                                         )}>
-                                                            <div className="absolute top-0 right-0 w-32 h-32 bg-[#4d6bfe]/10 blur-[60px] rounded-full -mr-16 -mt-16" />
-                                                            <p className="relative z-10">{q.feedback ? q.feedback.analysis : "No assessment available for this round."}</p>
-                                                        </div>
-                                                    </div>
+                                                            {q.feedback.score}/10
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                             </div>
+                                            
+                                            {!isExpanded ? (
+                                                <CardContent className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                                                    <div className={cn(
+                                                        "text-sm leading-relaxed line-clamp-3",
+                                                        isDark ? "text-zinc-400" : "text-slate-600"
+                                                    )}>
+                                                        {stripHtml(q.text)}
+                                                    </div>
+                                                    <div className="flex items-center justify-between pt-2 border-t border-border/10">
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#4d6bfe] opacity-60 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                                            Details <ChevronRight size={10} />
+                                                        </span>
+                                                        <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-widest border-[#4d6bfe]/20 text-[#4d6bfe]/70 bg-[#4d6bfe]/5">Coding Round</Badge>
+                                                    </div>
+                                                </CardContent>
+                                            ) : (
+                                                <CardContent className="p-8 space-y-10 animate-in fade-in zoom-in-95 duration-500 origin-top">
+                                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+                                                        <div className="space-y-8">
+                                                            <div className="space-y-4">
+                                                                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                                                    <FileText size={14} className="text-[#4d6bfe]" />
+                                                                    Context & Question
+                                                                </h4>
+                                                                <div className={cn(
+                                                                    "p-6 rounded-2xl text-sm leading-relaxed border",
+                                                                    isDark ? "bg-zinc-900 border-white/5 text-zinc-300" : "bg-slate-50 border-slate-200 text-slate-700"
+                                                                )}>
+                                                                    <div dangerouslySetInnerHTML={{ __html: q.text }} />
+                                                                </div>
+                                                            </div>
 
-                                            <div className="pt-8 border-t border-border/40 flex items-center justify-center">
-                                                <Button 
-                                                    variant="outline" 
-                                                    className="rounded-full gap-2 px-6 h-11 border-border/60 hover:bg-[#4d6bfe]/10 hover:text-[#4d6bfe] hover:border-[#4d6bfe]/30"
-                                                    onClick={() => navigate(`/feedback/${sessionId}`)}
-                                                >
-                                                    <Share2 size={16} />
-                                                    View Detailed Global Feedback
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                                            <div className="space-y-4">
+                                                                <div className="flex items-center justify-between">
+                                                                    <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                                                        <User size={14} className="text-[#4d6bfe]" />
+                                                                        Your Response
+                                                                    </h4>
+                                                                    {q.answer !== '__SKIPPED__' && q.answer.length > 300 && (
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="sm" 
+                                                                            onClick={(e) => { e.stopPropagation(); toggleCodeBlock(idx); }}
+                                                                            className="h-6 text-[10px] font-bold uppercase tracking-widest text-[#4d6bfe] hover:bg-[#4d6bfe]/10"
+                                                                        >
+                                                                            {expandedCodeBlocks[idx] ? "Collapse Code" : "Expand Full Code"}
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                                <div className={cn(
+                                                                    "relative rounded-2xl border shadow-inner transition-all duration-500 overflow-hidden",
+                                                                    isDark ? "bg-zinc-950/80 border-white/5 text-emerald-400 font-mono" : "bg-slate-900 text-emerald-400 font-mono",
+                                                                    !expandedCodeBlocks[idx] && q.answer !== '__SKIPPED__' && q.answer.length > 300 ? "max-h-[300px]" : "max-h-none"
+                                                                )}>
+                                                                    <pre className="p-6 whitespace-pre-wrap break-all text-sm leading-relaxed">{q.answer === '__SKIPPED__' ? '[Question Skipped]' : q.answer}</pre>
+                                                                    
+                                                                    {!expandedCodeBlocks[idx] && q.answer !== '__SKIPPED__' && q.answer.length > 300 && (
+                                                                        <div className={cn(
+                                                                            "absolute bottom-0 left-0 right-0 h-24 flex items-end justify-center pb-4",
+                                                                            isDark ? "bg-gradient-to-t from-zinc-950/90 to-transparent" : "bg-gradient-to-t from-slate-900/90 to-transparent"
+                                                                        )}>
+                                                                            <Button 
+                                                                                variant="secondary" 
+                                                                                size="sm" 
+                                                                                onClick={(e) => { e.stopPropagation(); toggleCodeBlock(idx); }}
+                                                                                className="rounded-full shadow-lg bg-emerald-500 hover:bg-emerald-600 text-white border-none text-[10px] font-bold uppercase tracking-widest px-6"
+                                                                            >
+                                                                                Show More
+                                                                            </Button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="space-y-8">
+                                                            <div className="space-y-4">
+                                                                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                                                    <Bot size={14} className="text-[#4d6bfe]" />
+                                                                    AI Performance Analysis
+                                                                </h4>
+                                                                <div className={cn(
+                                                                    "p-8 rounded-3xl text-base leading-relaxed border relative overflow-hidden h-full min-h-[300px]",
+                                                                    isDark ? "bg-[#4d6bfe]/5 border-[#4d6bfe]/20 text-white" : "bg-[#4d6bfe]/5 border-[#4d6bfe]/10 text-slate-800"
+                                                                )}>
+                                                                    <div className="absolute top-0 right-0 w-48 h-48 bg-[#4d6bfe]/10 blur-[80px] rounded-full -mr-24 -mt-24" />
+                                                                    <p className="relative z-10">{q.feedback ? q.feedback.analysis : "No assessment available for this round."}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="pt-8 border-t border-border/40 flex items-center justify-center">
+                                                        <Button 
+                                                            variant="outline" 
+                                                            className="rounded-full gap-2 px-8 h-12 border-border/60 hover:bg-[#4d6bfe]/10 hover:text-[#4d6bfe] hover:border-[#4d6bfe]/30 transition-all active:scale-95"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                navigate(`/feedback/${sessionId}`);
+                                                            }}
+                                                        >
+                                                            <Share2 size={18} />
+                                                            View Detailed Global Feedback
+                                                        </Button>
+                                                    </div>
+                                                </CardContent>
+                                            )}
+                                        </Card>
+                                    );
+                                })}
                             </div>
                             
                             <div className="text-center pt-20 pb-12">

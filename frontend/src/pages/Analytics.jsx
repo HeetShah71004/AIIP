@@ -341,7 +341,9 @@ const Analytics = () => {
         </Card>
 
         {advancedData?.radarData && (
-          <Card className="border-border/50 dark:border-zinc-800/90 dark:bg-[#0d1117] shadow-sm overflow-hidden md:col-span-2 xl:col-span-1">
+          <Card className="border-border/50 dark:border-zinc-800/90 dark:bg-[#0d1117] shadow-xl overflow-hidden md:col-span-2 xl:col-span-1 relative group bg-gradient-to-br from-background/50 via-primary/[0.03] to-background/50 backdrop-blur-sm">
+            <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px] pointer-events-none"></div>
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-700"></div>
             <CardHeader className="flex flex-row items-center gap-4 pb-8">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <Award size={20} />
@@ -355,22 +357,69 @@ const Analytics = () => {
               <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="80%" data={advancedData.radarData}>
-                    <PolarGrid stroke="hsl(var(--border))" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 10]} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                    <defs>
+                      <linearGradient id="radarGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
+                      </linearGradient>
+                      <filter id="radarGlow" height="300%" width="300%" x="-75%" y="-75%">
+                        <feGaussianBlur stdDeviation="4" result="blur" />
+                        <feComposite in="blur" in2="SourceAlpha" operator="out" result="glow" />
+                        <feMerge>
+                          <feMergeNode in="glow" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    <PolarGrid stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                    <PolarAngleAxis 
+                      dataKey="subject" 
+                      tick={(props) => {
+                        const { x, y, textAnchor, payload } = props;
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            textAnchor={textAnchor}
+                            fill={isDark ? '#94a3b8' : '#64748b'}
+                            fontSize={13}
+                            fontWeight="600"
+                            className="font-['Outfit']"
+                          >
+                            {payload.value}
+                          </text>
+                        );
+                      }}
+                    />
+                    <PolarRadiusAxis 
+                      angle={30} 
+                      domain={[0, 10]} 
+                      tick={false}
+                      axisLine={false}
+                    />
                     <Radar
                       name="User"
                       dataKey="A"
                       stroke="hsl(var(--primary))"
-                      fill="hsl(var(--primary))"
+                      strokeWidth={3}
+                      fill="url(#radarGradient)"
                       fillOpacity={0.6}
+                      filter="url(#radarGlow)"
+                      animationBegin={100}
+                      animationDuration={1200}
+                      animationEasing="ease-out"
                     />
                     <Tooltip 
                       contentStyle={{ 
-                        background: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))', 
-                        borderRadius: 'var(--radius)' 
+                        background: 'rgba(15, 23, 42, 0.95)', 
+                        border: '1px solid rgba(255, 255, 255, 0.1)', 
+                        borderRadius: '12px',
+                        backdropFilter: 'blur(8px)',
+                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                        color: '#fff'
                       }}
+                      itemStyle={{ color: '#6366f1', fontWeight: 'bold' }}
+                      labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
                     />
                   </RadarChart>
                 </ResponsiveContainer>

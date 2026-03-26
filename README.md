@@ -1,37 +1,36 @@
 # Interv AI 🚀
 
-**Interv AI** is a cutting-edge, AI-powered mock interview platform designed to help candidates prepare for technical and behavioral interviews with confidence. By leveraging advanced Large Language Models (LLMs) like Google Gemini and OpenAI, Interv AI provides a realistic, interactive, and personalized preparation experience.
+**Interv AI** is a premium, AI-powered mock interview platform designed to help candidates crush technical and behavioral interviews. By leveraging advanced Large Language Models (LLMs) and real-time execution engines, Interv AI provides a professional, interactive, and hyper-personalized preparation experience.
 
 ---
 
 ## ✨ Key Features
 
 ### 🎙️ AI-Powered Mock Interviews
-- **Realistic Conversations**: Engage in natural, context-aware dialogue with an AI interviewer.
-- **Company-Specific Prep**: Choose from top-tier companies (e.g., Google, Amazon, Meta, Netflix) to get tailored interview questions and scenarios.
-- **Role-Based Scenarios**: Prepare for specific roles such as Software Engineer, Frontend Developer, Backend Developer, or Full Stack Engineer.
-- **Speech-to-Text Answers**: Record spoken responses and convert them to text with word timestamps and optional speaker diarization.
+- **Real-Time Streaming**: Experience fluid, low-latency interactions powered by **Server-Sent Events (SSE)** for instant AI feedback and question generation.
+- **Role-Specific Scenarios**: Tailored prep for Software Engineer (Frontend, Backend, Full Stack), Data Scientist, and Product Manager roles.
+- **Company-Specific Tracks**: Get curated questions based on the interview patterns of tech giants like Google, Amazon, Meta, and Netflix.
+- **Hybrid Transcription**: High-accuracy speech-to-text using **Deepgram Nova-2** with intelligent browser-based fallbacks.
 
-### 📄 Resume-Driven Customization
-- **Intelligent Parsing**: Upload your resume (PDF or DOCX), and our AI will analyze your experience, skills, and projects to generate hyper-personalized interview questions.
-- **Skill Alignment**: Ensure your preparation matches the roles you're applying for by aligning interview topics with your actual background.
+### 📄 Intelligent Resume Alignment
+- **Resume Parsing**: Strategic analysis of PDF/DOCX resumes to generate questions that probe your specific experience and projects.
+- **Skill Gap Analysis**: AI identifies areas for improvement based on your resume versus target job descriptions.
 
-### 💻 Integrated Code Playground (IDE)
-- **Multi-Language Support**: Write and test code in Python, JavaScript, Java, C++, and more.
-- **Monaco Editor**: A professional-grade coding experience powered by the same engine behind VS Code.
-- **Real-Time Execution**: Instantly run your code and see outputs using the integrated Judge0 API.
-- **Resizable Interface**: A 0-100% resizable three-panel layout (Code Editor, Terminal/Output, and Voice/Chat) for a distraction-free environment.
+### 💻 Professional Code Playground (IDE)
+- **Edge-to-Edge IDE**: A distraction-free, 0-100% **resizable three-panel layout** featuring Problem Descriptions, Monaco Editor, and AI Discussion.
+- **Multi-Language Support**: Robust execution for Python, JavaScript, Java, C++, and more.
+- **Real-Time Execution**: Instantly run code and view outputs via the integrated **Judge0 API**.
+- **Thematic Precision**: Beautifully styled code environment with active line highlighting and theme-aware aesthetics.
 
-### 📊 Advanced Analytics & Instant Feedback
-- **Detailed Scoring**: Receive immediate feedback on your performance, including scoring for communication, technical accuracy, and problem-solving.
-- **Progress Tracking**: Visualize your growth over time with rich charts and statistics on your personal dashboard.
-- **Session History**: Revisit past interviews, review feedback, and track your improvement journey.
+### 📊 Advanced Performance Analytics
+- **Expandable Performance Cards**: Deep-dive into each response with a sleek, one-at-a-time expandable UI for detailed kommunication and technical scoring.
+- **Synchronized Global Timer**: An accurate, session-wide timer that manages interview pacing and handles time penalties dynamically.
+- **Progress Visualization**: Track your preparation journey with interactive Radar and Line charts on your personalized dashboard.
 
 ### 🌓 Premium User Experience
-- **Seamless Authentication**: Secure login and signup with Google OAuth and JWT-based session management.
-- **Thematic Consistency**: Fully responsive design with beautiful Dark and Light modes.
-- **Modern UI**: Built with Tailwind CSS and Radix UI for a sleek, accessible, and high-performance interface.
-- **Micro-Interactions**: Enhanced with Mac-style window icons and smooth scroll-to-top navigation for a premium, polished feel.
+- **Fullscreen Mode**: Toggle a truly immersive, distraction-free interview environment.
+- **Modern UI Suite**: Built with **Tailwind CSS**, **Radix UI**, and **Lucide React** for a sleek, high-performance interface.
+- **Glassmorphic Design**: Subtle micro-animations, smooth transitions, and a premium dark/light mode experience.
 
 ---
 
@@ -39,112 +38,74 @@
 
 ### Frontend
 - **Framework**: [React 18](https://reactjs.org/) (Vite)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Components**: [Radix UI](https://www.radix-ui.com/)
-- **IDE Engine**: [Monaco Editor](https://microsoft.github.io/monaco-editor/)
-- **Visualizations**: [Recharts](https://recharts.org/) & [Chart.js](https://www.chartjs.org/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Routing**: [React Router v6](https://reactrouter.com/)
 - **State Management**: React Context API
-- **Notifications**: [React Hot Toast](https://react-hot-toast.com/)
+- **UI Components**: [shadcn/ui](https://ui.shadcn.com/) (Radix UI & Tailwind CSS)
+- **IDE Engine**: [Monaco Editor](https://microsoft.github.io/monaco-editor/)
+- **Layout**: [React Resizable Panels](https://github.com/bvaughn/react-resizable-panels)
+- **Visualizations**: [Recharts](https://recharts.org/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Audio Logic**: Custom Web Audio API wrappers with Deepgram integration
 
 ### Backend
-- **Runtime**: [Node.js](https://nodejs.org/)
-- **Framework**: [Express.js](https://expressjs.com/)
-- **Database**: [MongoDB](https://www.mongodb.com/) (Mongoose ODM)
-- **AI Integration**: [Google Gemini AI API](https://ai.google.dev/) & [OpenAI API](https://openai.com/api/)
-- **Authentication**: JWT (JSON Web Tokens) & [Bcrypt.js](https://github.com/kelektiv/node.bcrypt.js)
-- **Storage & Assets**: [Cloudinary](https://cloudinary.com/) & [Multer](https://github.com/expressjs/multer)
-- **Parsing**: `mammoth` (DOCX) & `pdf-parse` (PDF)
-- **Code Execution**: [Judge0 API](https://judge0.com/)
+- **Runtime**: [Node.js](https://nodejs.org/) with [Express.js](https://expressjs.com/)
+- **Database**: [MongoDB](https://www.mongodb.com/) (Mongoose)
+- **AI Engine**: [Google Gemini AI](https://ai.google.dev/) & [OpenAI](https://openai.com/)
+- **Streaming**: Server-Sent Events (SSE) for real-time evaluation
+- **Authentication**: JWT (Stateless) & Google OAuth 2.0
+- **Transcription**: [Deepgram API](https://deepgram.com/)
+- **Execution**: [Judge0 API](https://judge0.com/)
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js** (v18 or higher)
-- **MongoDB** (Local instance or MongoDB Atlas)
+- **Node.js** (v18+)
+- **MongoDB** instance (Local or Atlas)
 - **API Keys**:
-  - Google Gemini API Key
-  - Cloudinary Credentials
-  - Judge0 RapidAPI Key (Optional, for code execution)
-  - Google Client ID (For Google OAuth)
+  - `GEMINI_API_KEY` (Google AI)
+  - `DEEPGRAM_API_KEY` (Transcription)
+  - `JUDGE0_KEY` (RapidAPI - Code Execution)
+  - `GOOGLE_CLIENT_ID` (OAuth)
 
 ### Installation
 
-1. **Clone the repository:**
+1. **Clone the repo:**
    ```bash
    git clone https://github.com/your-username/aip.git
    cd aip
    ```
 
-2. **Install Backend Dependencies:**
+2. **Install dependencies:**
    ```bash
-   cd backend
+   # Root
    npm install
+   # Backend
+   cd backend && npm install
+   # Frontend
+   cd ../frontend && npm install
    ```
 
-3. **Install Frontend Dependencies:**
-   ```bash
-   cd ../frontend
-   npm install
-   ```
+### Execution
 
-### Environment Configuration
-
-Create a `.env` file in the `backend` directory and add the following:
-
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_uri
-JWT_SECRET=your_jwt_secret
-JWT_REFRESH_SECRET=your_refresh_secret
-ACCESS_TOKEN_EXPIRY=15m
-REFRESH_TOKEN_EXPIRY=7d
-NODE_ENV=development
-
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-
-# AI APIs
-GEMINI_API_KEY=your_gemini_api_key
-OPENAI_API_KEY=your_openai_api_key
-DEEPGRAM_API_KEY=your_deepgram_api_key
-DEEPGRAM_MODEL=nova-2
-DEEPGRAM_LANGUAGE=en-US
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your_google_client_id
-
-# Judge0 (RapidAPI)
-JUDGE0_HOST=judge0-ce.p.rapidapi.com
-JUDGE0_KEY=your_rapidapi_key
-```
-
-### Running Locally
-
-1. **Start the Backend Server:**
+1. **Start Backend:**
    ```bash
    cd backend
    npm run dev
    ```
 
-2. **Start the Frontend Development Server:**
+2. **Start Frontend:**
    ```bash
    cd frontend
    npm run dev
    ```
 
-The application will be accessible at `http://localhost:5173`.
+The app will launch at `http://localhost:5173`.
 
 ---
 
 ## 📄 License
-This project is licensed under the [ISC License](LICENSE).
-
----
+Licensed under the [ISC License](LICENSE).
 
 Developed with ❤️ by the Interv AI Team.
+ with ❤️ by the Interv AI Team.
