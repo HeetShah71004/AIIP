@@ -25,6 +25,8 @@ import sessions from './routes/sessionRoutes.js';
 import analytics from './routes/analyticsRoutes.js';
 import code from './routes/codeRoutes.js';
 import speech from './routes/speechRoutes.js';
+import emotion from './routes/emotionRoutes.js';
+import performance from './routes/performanceRoutes.js';
 
 // Mount routers
 app.use('/api/v1/auth', auth);
@@ -34,6 +36,8 @@ app.use('/api/v1/sessions', sessions);
 app.use('/api/v1/analytics', analytics);
 app.use('/api/v1/code', code);
 app.use('/api/v1/speech', speech);
+app.use('/api/v1/emotion', emotion);
+app.use('/api/v1/performance', performance);
 
 app.use(errorHandler);
 

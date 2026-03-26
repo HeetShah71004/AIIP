@@ -17,6 +17,8 @@ import Settings from './pages/Settings';
 import CodePlayground from './pages/CodePlayground';
 import Navbar from './components/Navbar';
 import './index.css';
+import ConversationalInterview from './pages/ConversationalInterview';
+import Gamification from './pages/Gamification';
 
 const AppContent = () => {
   const location = useLocation();
@@ -99,6 +101,22 @@ const AppContent = () => {
                 <Settings />
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/conversational-interview"
+            element={
+              <ProtectedRoute>
+                <ConversationalInterview />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/gamification"
+            element={
+              <ProtectedRoute>
+                <Gamification />
+              </ProtectedRoute>
+            }
           />
           <Route 
             path="/playground" 

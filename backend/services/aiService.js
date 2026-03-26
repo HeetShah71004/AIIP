@@ -144,7 +144,7 @@ export const evaluateAnswer = async (question, answer) => {
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: "models/gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
       });
 
@@ -211,7 +211,7 @@ export const generateFollowUpQuestion = async (previousQuestion, previousAnswer,
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: "models/gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         generationConfig: { maxOutputTokens: 2000, temperature: 0.8 }
       });
 
@@ -245,7 +245,7 @@ export const generateQuestionsFromResume = async (resumeData, totalQuestions = 5
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: "models/gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         generationConfig: { maxOutputTokens: 2000 }
       });
 
@@ -292,7 +292,7 @@ export const extractStructuredDataFromResume = async (text) => {
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: "models/gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         generationConfig: { maxOutputTokens: 4000 }
       });
 
@@ -338,7 +338,7 @@ export const generateTargetedQuestions = async (company, roleLevel, interviewRou
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: "models/gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         generationConfig: { maxOutputTokens: 2000 }
       });
 
@@ -370,5 +370,43 @@ export const generateTargetedQuestions = async (company, roleLevel, interviewRou
     "What is your approach to teamwork?",
     "Explain an algorithm to traverse a binary tree."
   ].slice(0, totalQuestions);
+};
+
+/**
+ * Analyzes the emotion and confidence from audio data.
+ * For now, this is a mock function.
+ * @param {Buffer} audio - The audio data.
+ * @returns {Promise<number>} A confidence score between 0 and 1.
+ */
+export const getEmotionConfidence = async (audio) => {
+  // In a real implementation, you would send the audio to a service like Hume AI
+  // and get a confidence score.
+  console.log('Analyzing emotion for audio buffer of length:', audio.length);
+  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+  return Math.random(); // Return a random confidence score
+};
+
+/**
+ * Predicts the performance of a candidate based on score history and skill gaps.
+ * For now, this is a mock function.
+ * @param {Array<number>} scoreHistory - The candidate's score history.
+ * @param {Array<string>} skillGaps - The candidate's skill gaps.
+ * @returns {Promise<object>} A prediction object.
+ */
+export const predictPerformance = async (scoreHistory, skillGaps) => {
+  // In a real implementation, you would use a machine learning model
+  // to predict performance based on the provided data.
+  console.log('Predicting performance for score history:', scoreHistory);
+  console.log('And skill gaps:', skillGaps);
+  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate model processing time
+
+  const readinessScore = Math.random();
+  const topFactors = [
+    'Score history trend',
+    'Performance in recent interviews',
+    'Coverage of identified skill gaps',
+  ];
+
+  return { readinessScore, topFactors };
 };
 

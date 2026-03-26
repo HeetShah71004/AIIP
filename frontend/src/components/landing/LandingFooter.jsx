@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Twitter, Linkedin, Github, Send } from 'lucide-react';
+import { Linkedin, Github, Send } from 'lucide-react';
 
 const LandingFooter = () => {
   return (
@@ -10,10 +10,10 @@ const LandingFooter = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">
           {/* Brand Column */}
           <div className="space-y-6">
-            <Link to="/" className="flex items-center gap-2 group">
-              <span className="text-2xl font-bold tracking-tight font-syne">Interv</span>
-              <div className="bg-white px-1.5 py-0.5 rounded-[4px]">
-                <span className="text-[10px] font-black text-[#0a0a0a] leading-none">AI</span>
+            <Link to="/" className="flex items-center gap-2 group transition-transform hover:scale-[1.02]">
+              <span className="text-2xl font-bold tracking-tighter text-[#14b8a6]">Interv</span>
+              <div className="bg-[#1a1a1a] px-2 py-0.5 rounded-md border border-white/[0.08]">
+                <span className="text-lg font-bold text-white">AI</span>
               </div>
             </Link>
             <p className="text-white/50 text-sm leading-relaxed max-w-[240px] font-dm-sans">
@@ -21,9 +21,8 @@ const LandingFooter = () => {
             </p>
             <div className="flex gap-3">
               {[
-                { icon: Twitter, href: "#" },
-                { icon: Linkedin, href: "#" },
-                { icon: Github, href: "https://github.com" }
+                { icon: Linkedin, href: "https://www.linkedin.com/in/heet-shah-049a98316/" },
+                { icon: Github, href: "https://github.com/HeetShah71004" }
               ].map((social, i) => (
                 <a
                   key={i}

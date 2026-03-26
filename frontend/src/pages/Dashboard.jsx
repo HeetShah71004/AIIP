@@ -121,14 +121,20 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20 border-border/50 dark:bg-[#0d1117] dark:border-zinc-800/90">
+        <Card 
+          onClick={() => navigate('/conversational-interview')}
+          className="transition-all duration-300 hover:shadow-xl hover:shadow-teal-500/10 hover:-translate-y-1 hover:border-teal-500/20 border-border/50 dark:bg-[#0d1117] dark:border-zinc-800/90 cursor-pointer group"
+        >
           <CardContent className="flex items-center gap-4 p-6">
-            <div className="p-3 rounded-xl bg-red-500/10 text-red-600">
+            <div className="p-3 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
               <Zap size={24} />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider dark:text-zinc-400">Current Streak</p>
-              <h3 className="text-3xl font-bold tracking-tight dark:text-zinc-100">{stats?.streak || 0} Days</h3>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider dark:text-zinc-400">Feeling Ready?</p>
+              <h3 className="text-xl font-bold tracking-tight dark:text-zinc-100 flex items-center gap-2">
+                Emotional Interview
+                <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              </h3>
             </div>
           </CardContent>
         </Card>
