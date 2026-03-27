@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Linkedin, Github, Send } from 'lucide-react';
 
 const LandingFooter = () => {
+  const navigate = useNavigate();
   return (
     <footer className="bg-[#0a0a0a] text-white pt-20 pb-10 border-t border-white/[0.08]">
       <div className="max-w-7xl mx-auto px-6">
@@ -75,7 +76,17 @@ const LandingFooter = () => {
             <p className="text-white/50 text-sm mb-6 font-dm-sans">
               Get the latest interview tips and AI updates.
             </p>
-            <form className="relative group" onSubmit={(e) => e.preventDefault()}>
+            <form 
+              className="relative group" 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (window.location.pathname === '/') {
+                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                  navigate('/#pricing');
+                }
+              }}
+            >
               <input
                 type="email"
                 placeholder="email@example.com"

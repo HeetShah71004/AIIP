@@ -24,10 +24,11 @@ const AppContent = () => {
   const location = useLocation();
   const isInterviewPage = location.pathname.startsWith('/interview/');
   const isPlaygroundPage = location.pathname.startsWith('/playground');
+  const isConversationalPage = location.pathname === '/conversational-interview';
 
   return (
     <>
-      {!(isInterviewPage || isPlaygroundPage) && <Navbar />}
+      {!(isInterviewPage || isPlaygroundPage || isConversationalPage) && <Navbar />}
       <main className="min-h-screen">
         <Routes>
           <Route 

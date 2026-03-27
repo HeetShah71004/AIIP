@@ -7,7 +7,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
@@ -78,7 +77,6 @@ const Settings = () => {
 
   const sidebarItems = [
     { id: 'appearance', name: 'Appearance', icon: <Palette size={18} /> },
-    { id: 'notifications', name: 'Notifications', icon: <Bell size={18} /> },
   ];
 
   return (
@@ -150,37 +148,6 @@ const Settings = () => {
                         </div>
                       </button>
                     ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Contrast Settings (Visual Dummy) */}
-                <div className="space-y-6">
-                  <h2 className="text-sm font-semibold">Accessibility</h2>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <Eye size={16} className="text-muted-foreground" />
-                          <p className="text-sm font-medium dark:text-zinc-100">Increase contrast</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground dark:text-zinc-400">Reduce the color intensity of non-critical elements.</p>
-                      </div>
-                      <Switch disabled />
-                    </div>
-
-                    <div className="flex items-center justify-between opacity-50">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <Laptop size={16} className="text-muted-foreground" />
-                          <p className="text-sm font-medium dark:text-zinc-100">Default to high contrast on system setting</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground dark:text-zinc-400">Automatically enable high contrast when requested by your OS.</p>
-                      </div>
-                      <Switch disabled />
-                    </div>
                   </div>
                 </div>
 

@@ -9,10 +9,17 @@ export const getAnalyticsSummary = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const skip = (page - 1) * limit;
+    const sortBy = req.query.sortBy || 'latest';
+
+    // Build sort options
+    let sortOptions = { completedAt: -1, createdAt: -1 };
+    if (sortBy === 'highestScore') {
+      sortOptions = { score: -1, completedAt: -1 };
+    }
 
     // 1. Session history (with pagination support)
     const sessionHistory = await Session.find({ user: userId, status: 'completed' })
-      .sort({ completedAt: -1, createdAt: -1 })
+      .sort(sortOptions)
       .skip(skip)
       .limit(limit)
       .select('score createdAt completedAt parsedData company roleLevel interviewRound');

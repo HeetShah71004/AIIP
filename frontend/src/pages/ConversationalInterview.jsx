@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Mic, Send, Download, AlertCircle, Heart, Zap, Brain, Sparkles } from 'lucide-react';
+import { Paperclip, Mic, Send, Download, AlertCircle, Heart, Zap, Brain, Sparkles, Home, ChevronLeft } from 'lucide-react';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 
 const ConversationalInterview = () => {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -106,11 +108,22 @@ const ConversationalInterview = () => {
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       <div className="w-80 bg-white dark:bg-[#0d1117] p-6 border-r border-gray-200 dark:border-zinc-800 flex flex-col shadow-xl z-20">
-        <div className="flex items-center gap-2 mb-8">
-          <div className="p-2 rounded-lg bg-teal-500/10 text-teal-500">
-            <Brain size={20} />
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-teal-500/10 text-teal-500">
+              <Brain size={20} />
+            </div>
+            <h2 className="text-xl font-bold tracking-tight dark:text-zinc-100">AI Analysis</h2>
           </div>
-          <h2 className="text-xl font-bold tracking-tight dark:text-zinc-100">AI Analysis</h2>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate('/dashboard')}
+            className="rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-muted-foreground hover:text-rose-500 transition-colors"
+            title="Exit to Dashboard"
+          >
+            <Home size={18} />
+          </Button>
         </div>
 
         <div className="space-y-8 flex-1">

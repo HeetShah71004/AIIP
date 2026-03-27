@@ -52,6 +52,9 @@ const InterviewFeedback = () => {
     const [loading, setLoading] = useState(true);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isResponseExpanded, setIsResponseExpanded] = useState(false);
+    const [needsExpansion, setNeedsExpansion] = useState(false);
+    const responseRef = useRef(null);
     const { theme } = useTheme();
     const isDark = theme === 'dark';
 
@@ -68,6 +71,39 @@ const InterviewFeedback = () => {
         };
         fetchData();
     }, [sessionId, navigate]);
+
+    useEffect(() => {
+        const checkOverflow = () => {
+            if (responseRef.current) {
+                // If expanded, we don't change needsExpansion, but we need to know if it *would* overflow
+                // We'll use a slightly higher threshold to avoid flickering
+                const hasOverflow = responseRef.current.scrollHeight > 85;
+                setNeedsExpansion(hasOverflow);
+            }
+        };
+
+        checkOverflow();
+        // Catch any late-rendering content (like formatted code blocks)
+        const timer = setTimeout(checkOverflow, 150);
+        
+        // Add a resize listener for responsiveness
+        window.addEventListener('resize', checkOverflow);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('resize', checkOverflow);
+        };
+    }, [currentSlide, data]);
+
+    const nextSlide = () => {
+        if (!data) return;
+        setCurrentSlide(prev => (prev + 1) % data.questions.length);
+        setIsResponseExpanded(false);
+    };
+    const prevSlide = () => {
+        if (!data) return;
+        setCurrentSlide(prev => (prev - 1 + data.questions.length) % data.questions.length);
+        setIsResponseExpanded(false);
+    };
 
     if (loading) return <LoadingSpinner fullPage message="Fetching your performance report..." />;
 
@@ -126,8 +162,6 @@ const InterviewFeedback = () => {
         maintainAspectRatio: false
     };
 
-    const nextSlide = () => setCurrentSlide(prev => (prev + 1) % totalQuestions);
-    const prevSlide = () => setCurrentSlide(prev => (prev - 1 + totalQuestions) % totalQuestions);
 
     const getScoreColor = (score) => {
         if (score >= 7) return "text-green-600";
@@ -283,10 +317,41 @@ const InterviewFeedback = () => {
                     <CardTitle className="text-xl leading-relaxed font-semibold">{currentQ.text}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Your Response</p>
-                        <div className="p-4 rounded-xl bg-muted/40 border border-border/40 text-sm leading-relaxed text-muted-foreground">
-                            {renderAnswer(currentQ.answer)}
+                        <div className="relative group/response">
+                            <div 
+                                ref={responseRef}
+                                className={cn(
+                                    "rounded-xl bg-muted/40 border border-border/40 text-sm leading-relaxed text-muted-foreground transition-all duration-500 ease-in-out overflow-hidden",
+                                    !isResponseExpanded && needsExpansion ? "max-h-[5rem]" : "max-h-[2000px]"
+                                )}
+                            >
+                                <div className="p-4">
+                                    {renderAnswer(currentQ.answer)}
+                                </div>
+                                
+                                {!isResponseExpanded && needsExpansion && (
+                                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-muted/60 via-muted/20 to-transparent pointer-events-none z-10" />
+                                )}
+                            </div>
+
+                            {needsExpansion && (
+                                <div className="flex justify-center mt-[-1rem] relative z-20">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => setIsResponseExpanded(!isResponseExpanded)}
+                                        className="gap-1.5 h-auto p-0 hover:bg-transparent text-primary hover:text-primary/80 font-bold text-xs"
+                                    >
+                                        {isResponseExpanded ? (
+                                            <>Show Less <ChevronUp size={14} /></>
+                                        ) : (
+                                            <>Show More <ChevronDown size={14} /></>
+                                        )}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
 

@@ -56,6 +56,7 @@ export const AuthProvider = ({ children }) => {
     }
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('ad_dismissed');
     setUser(null);
   };
 

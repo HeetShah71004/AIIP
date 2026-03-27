@@ -8,6 +8,7 @@
 
 ### 🎙️ AI-Powered Mock Interviews
 - **Real-Time Streaming**: Experience fluid, low-latency interactions powered by **Server-Sent Events (SSE)** for instant AI feedback and question generation.
+- **Infinite Social Proof Marquee**: A sleek, auto-scrolling display of top companies utilizing high-fidelity fade masks and interactive hover states.
 - **Role-Specific Scenarios**: Tailored prep for Software Engineer (Frontend, Backend, Full Stack), Data Scientist, and Product Manager roles.
 - **Company-Specific Tracks**: Get curated questions based on the interview patterns of tech giants like Google, Amazon, Meta, and Netflix.
 - **Hybrid Transcription**: High-accuracy speech-to-text using **Deepgram Nova-2** with intelligent browser-based fallbacks.
@@ -23,12 +24,15 @@
 - **Thematic Precision**: Beautifully styled code environment with active line highlighting and theme-aware aesthetics.
 
 ### 📊 Advanced Performance Analytics
-- **Expandable Performance Cards**: Deep-dive into each response with a sleek, one-at-a-time expandable UI for detailed kommunication and technical scoring.
+- **Smart History Sorting**: Toggle between **"Latest"** and **"Top Scores"** globally to track your evolution or reflect on your best-of performances.
+- **Expandable Response Viewer**: implemented with smart overflow detection, gradient-fade transitions, and a clean "Show More/Less" toggle for long user answers.
+- **Expandable Performance Cards**: Deep-dive into each response with a sleek, one-at-a-time expandable UI for detailed communication and technical scoring.
 - **Synchronized Global Timer**: An accurate, session-wide timer that manages interview pacing and handles time penalties dynamically.
 - **Progress Visualization**: Track your preparation journey with interactive Radar and Line charts on your personalized dashboard.
 
 ### 🌓 Premium User Experience
-- **Fullscreen Mode**: Toggle a truly immersive, distraction-free interview environment.
+- **Dismissible Feature Carousels**: High-fidelity, floating ad systems for new features with session-based persistence and glassmorphic icons.
+- **Distraction-Free Mode**: Global Navbar auto-hiding for deep interview focus and immersive full-screen sessions.
 - **Modern UI Suite**: Built with **Tailwind CSS**, **Radix UI**, and **Lucide React** for a sleek, high-performance interface.
 - **Glassmorphic Design**: Subtle micro-animations, smooth transitions, and a premium dark/light mode experience.
 
@@ -108,4 +112,3 @@ The app will launch at `http://localhost:5173`.
 Licensed under the [ISC License](LICENSE).
 
 Developed with ❤️ by the Interv AI Team.
- with ❤️ by the Interv AI Team.
