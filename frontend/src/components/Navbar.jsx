@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Upload, BarChart3, User as UserIcon, Settings as SettingsIcon } from 'lucide-react';
+import { LogOut, Upload, BarChart3, User as UserIcon, Settings as SettingsIcon, Layout } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +56,10 @@ const Navbar = () => {
           <Link to="/analytics" className={navLinkClass('/analytics')}>
             <BarChart3 size={17} />
             <span className="hidden sm:inline">Analytics</span>
+          </Link>
+          <Link to="/resume-builder" className={navLinkClass('/resume-builder')}>
+            <Layout size={17} />
+            <span className="hidden sm:inline">Resume Builder</span>
           </Link>
           <div className="hidden sm:block h-6 w-px bg-border/80 dark:bg-zinc-700 mx-1" />
 

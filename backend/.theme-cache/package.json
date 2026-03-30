@@ -1,0 +1,9 @@
+{
+  "name": "jsonresume-theme-cache",
+  "private": true,
+  "version": "1.0.0",
+  "description": "On-demand installed JSONResume themes for preview rendering",
+  "dependencies": {
+    "jsonresume-theme-flat": "^0.3.7"
+  }
+}

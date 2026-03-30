@@ -1,6 +1,8 @@
 import ResumeService from '../services/resumeService.js';
-import { extractStructuredDataFromResume } from '../services/aiService.js';
+import { extractStructuredDataFromResume, rewriteResumeSection, analyzeResumeATS, parseResumeForBuilder } from '../services/aiService.js';
+import { getThemeCatalog, syncThemeCatalog } from '../services/themeCatalogService.js';
 import Session from '../models/Session.js';
+import Resume from '../models/Resume.js';
 import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
 import dotenv from 'dotenv';
@@ -135,6 +137,195 @@ export const uploadResume = async (req, res, next) => {
     res.status(201).json({
       success: true,
       data: session
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Parse uploaded resume exclusively for Builder
+// @route   POST /api/v1/resume/import
+// @access  Private
+export const parseAndImportResume = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Please upload a file' });
+    }
+
+    const buffer = req.file.buffer;
+    const fileExtension = path.extname(req.file.originalname).toLowerCase();
+    
+    let text = '';
+    if (fileExtension === '.pdf') {
+      text = await ResumeService.extractFromPDF(buffer);
+    } else if (fileExtension === '.docx') {
+      text = await ResumeService.extractFromDOCX(buffer);
+    } else {
+      text = buffer.toString('utf8');
+    }
+
+    if (!text.trim()) {
+      return res.status(400).json({ success: false, error: 'Could not extract text from the file.' });
+    }
+
+    // Call the AI Service tailored for the Builder state
+    const parsedData = await parseResumeForBuilder(text);
+
+    res.status(200).json({
+      success: true,
+      data: parsedData
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get user resume
+// @route   GET /api/v1/resume
+// @access  Private
+export const getResume = async (req, res, next) => {
+  try {
+    const resume = await Resume.findOne({ user: req.user.id });
+    
+    res.status(200).json({
+      success: true,
+      data: resume
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Create or update user resume
+// @route   POST /api/v1/resume
+// @access  Private
+export const upsertResume = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    let resume = await Resume.findOne({ user: userId });
+
+    const payload = { ...req.body };
+    
+    // Deeply remove immutable MongoDB fields to prevent MongoServerError during $set updates
+    const stripImmutables = (obj) => {
+      if (Array.isArray(obj)) {
+        obj.forEach(stripImmutables);
+      } else if (obj && typeof obj === 'object') {
+        delete obj._id;
+        delete obj.__v;
+        delete obj.createdAt;
+        delete obj.updatedAt;
+        Object.values(obj).forEach(stripImmutables);
+      }
+    };
+    stripImmutables(payload);
+    
+    payload.user = userId;
+
+    if (resume) {
+      resume = await Resume.findOneAndUpdate(
+        { user: userId },
+        { $set: payload },
+        { new: true, runValidators: true }
+      );
+    } else {
+      resume = await Resume.create(payload);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: resume
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Rewrite resume section using AI
+// @route   POST /api/v1/resume/rewrite
+// @access  Private
+export const rewriteSection = async (req, res, next) => {
+  try {
+    const { text, sectionType } = req.body;
+
+    if (!text || !sectionType) {
+      return res.status(400).json({ success: false, error: 'Please provide text and section type' });
+    }
+
+    const rewrittenText = await rewriteResumeSection(text, sectionType);
+
+    res.status(200).json({
+      success: true,
+      data: rewrittenText
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Calculate ATS score using AI
+// @route   POST /api/v1/resume/ats-score
+// @access  Private
+export const calculateATS = async (req, res, next) => {
+  try {
+    const { resumeData, targetKeywords } = req.body;
+
+    if (!resumeData) {
+      return res.status(400).json({ success: false, error: 'Please provide resume data' });
+    }
+
+    const analysis = await analyzeResumeATS(resumeData, targetKeywords);
+
+    // Update resume with the new score if it exists
+    await Resume.findOneAndUpdate(
+      { user: req.user.id },
+      { 
+        atsScore: {
+          ...analysis,
+          lastAnalyzed: Date.now()
+        } 
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: analysis
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get community theme catalog
+// @route   GET /api/v1/resume/themes
+// @access  Private
+export const getResumeThemeCatalog = async (req, res, next) => {
+  try {
+    const { search = '', style = 'All', page = 1, limit = 60 } = req.query;
+    const data = await getThemeCatalog({ search, style, page, limit });
+
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Force sync community theme catalog
+// @route   POST /api/v1/resume/themes/sync
+// @access  Private
+export const syncResumeThemeCatalog = async (req, res, next) => {
+  try {
+    const data = await syncThemeCatalog({ force: true });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        syncedAt: data.syncedAt,
+        total: data.themes.length
+      }
     });
   } catch (err) {
     next(err);

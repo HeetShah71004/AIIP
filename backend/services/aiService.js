@@ -144,7 +144,7 @@ export const evaluateAnswer = async (question, answer) => {
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
       });
 
@@ -211,7 +211,7 @@ export const generateFollowUpQuestion = async (previousQuestion, previousAnswer,
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         generationConfig: { maxOutputTokens: 2000, temperature: 0.8 }
       });
 
@@ -245,7 +245,7 @@ export const generateQuestionsFromResume = async (resumeData, totalQuestions = 5
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         generationConfig: { maxOutputTokens: 2000 }
       });
 
@@ -292,7 +292,7 @@ export const extractStructuredDataFromResume = async (text) => {
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         generationConfig: { maxOutputTokens: 4000 }
       });
 
@@ -338,7 +338,7 @@ export const generateTargetedQuestions = async (company, roleLevel, interviewRou
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         generationConfig: { maxOutputTokens: 2000 }
       });
 
@@ -410,3 +410,187 @@ export const predictPerformance = async (scoreHistory, skillGaps) => {
   return { readinessScore, topFactors };
 };
 
+/**
+ * Rewrites a resume section to be more professional using AI.
+ * @param {string} text - The original text.
+ * @param {string} sectionType - The type of section (e.g., 'Summary', 'Experience').
+ * @returns {Promise<string>} The rewritten text.
+ */
+export const rewriteResumeSection = async (text, sectionType) => {
+  const prompt = `
+    You are an expert resume writer. Rewrite the following ${sectionType} to be more professional, impact-oriented, and concise.
+    Use strong action verbs and quantify achievements where possible. 
+    Maintain a professional and modern tone.
+
+    Original Text:
+    "${text}"
+
+    Provide the rewritten version as a plain string. Do not include any other text or formatting.
+  `;
+
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
+    try {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: { maxOutputTokens: 1000, temperature: 0.7 }
+      });
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text().trim();
+    } catch (error) {
+      console.error('Gemini Rewrite Error:', error.message);
+    }
+  }
+
+  return text; 
+};
+
+/**
+ * Analyzes a resume for ATS compatibility using AI.
+ * @param {object} resumeData - The structured resume data.
+ * @param {Array<string>} targetKeywords - Optional keywords to check against.
+ * @returns {Promise<object>} An evaluation object with score, feedback, and missing keywords.
+ */
+export const analyzeResumeATS = async (resumeData, targetKeywords = []) => {
+  const prompt = `
+    Analyze the following resume data for ATS (Applicant Tracking System) compatibility.
+    Target Keywords: ${targetKeywords.join(', ') || 'General Software Engineering keywords'}
+
+    Resume Data:
+    ${JSON.stringify(resumeData, null, 2)}
+
+    Evaluate the resume based on:
+    1. Keyword density for the target role.
+    2. Clarity and structure.
+    3. Use of action verbs.
+    4. Missing critical sections or information.
+
+    Provide the evaluation in JSON format with exactly the following fields:
+    - score (number, 0-100)
+    - feedback (array of strings, specific actionable tips)
+    - missingKeywords (array of strings, keywords that should be added)
+
+    IMPORTANT: Return ONLY the JSON object, no other text.
+  `;
+
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
+    try {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: { maxOutputTokens: 2000, temperature: 0.4 }
+      });
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      return extractJson(text);
+    } catch (error) {
+      console.error('Gemini ATS Analysis Error:', error.message);
+    }
+  }
+
+  return {
+    score: 75,
+    feedback: ["Add more quantifiable achievements.", "Include a skills section if missing."],
+    missingKeywords: []
+  };
+};
+
+/**
+ * Parses raw resume text into the exact structured format required by the Resume Builder.
+ * @param {string} resumeText - The raw extracted text from the PDF/DOCX.
+ * @returns {Promise<object>} The structured JSON object matching the Builder state.
+ */
+export const parseResumeForBuilder = async (resumeText) => {
+  const prompt = `
+    Analyze the following raw resume text and extract the information into a highly structured JSON format.
+    If any information is missing, leave the string empty or the array empty. Do not invent information.
+
+    Raw Resume Text:
+    """
+    ${resumeText}
+    """
+
+    Provide the extracted data in JSON format EXACTLY matching this structure:
+    {
+      "personalInfo": {
+        "fullName": "Name",
+        "email": "Email",
+        "phone": "Phone number",
+        "location": "City, State or Country",
+        "linkedIn": "LinkedIn URL or handle",
+        "github": "GitHub URL or handle",
+        "leetcode": "Leetcode URL or handle"
+      },
+      "summary": "Professional summary or objective",
+      "experience": [
+        {
+          "company": "Company Name",
+          "role": "Job Title",
+          "location": "Location",
+          "startDate": "e.g. June 2020",
+          "endDate": "e.g. Present or Aug 2022",
+          "description": "Bullet points of responsibilities and achievements. IMPORTANT: Use \\n for newlines, NEVER use literal newlines inside strings."
+        }
+      ],
+      "education": [
+        {
+          "school": "University/School",
+          "degree": "Degree Earned",
+          "startDate": "Start Date",
+          "endDate": "End Date",
+          "description": "Additional details like GPA, honors, etc. Use \\n for newlines."
+        }
+      ],
+      "skills": ["Skill 1", "Skill 2"],
+      "languages": ["Language 1", "Language 2"],
+      "projects": [
+        {
+          "name": "Project Name",
+          "description": "Project Description. Use \\n for newlines.",
+          "link": "Project URL",
+          "technologies": ["Tech 1", "Tech 2"]
+        }
+      ]
+    }
+
+    IMPORTANT: Return ONLY the valid JSON object. Do not wrap in markdown tags or use unescaped characters.
+  `;
+
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
+    try {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: { 
+          maxOutputTokens: 3000, 
+          temperature: 0.2,
+          responseMimeType: "application/json" 
+        }
+      });
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      return extractJson(text);
+    } catch (error) {
+      console.error('Gemini Builder Parser Error:', error.message);
+    }
+  }
+
+  // Fallback if AI fails or key is missing
+  return {
+    personalInfo: { fullName: "", email: "", phone: "", location: "", linkedIn: "", github: "", leetcode: "" },
+    summary: "Could not parse summary.",
+    experience: [],
+    education: [],
+    skills: [],
+    languages: [],
+    projects: []
+  };
+};

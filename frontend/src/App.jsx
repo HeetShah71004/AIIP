@@ -19,16 +19,18 @@ import Navbar from './components/Navbar';
 import './index.css';
 import ConversationalInterview from './pages/ConversationalInterview';
 import Gamification from './pages/Gamification';
+import ResumeBuilder from './pages/ResumeBuilder';
 
 const AppContent = () => {
   const location = useLocation();
   const isInterviewPage = location.pathname.startsWith('/interview/');
   const isPlaygroundPage = location.pathname.startsWith('/playground');
   const isConversationalPage = location.pathname === '/conversational-interview';
+  const isResumeBuilder = location.pathname === '/resume-builder';
 
   return (
     <>
-      {!(isInterviewPage || isPlaygroundPage || isConversationalPage) && <Navbar />}
+      {!(isInterviewPage || isPlaygroundPage || isConversationalPage || isResumeBuilder) && <Navbar />}
       <main className="min-h-screen">
         <Routes>
           <Route 
@@ -124,6 +126,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <CodePlayground />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/resume-builder" 
+            element={
+              <ProtectedRoute>
+                <ResumeBuilder />
               </ProtectedRoute>
             } 
           />

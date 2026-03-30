@@ -4,8 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import {
   User, Mail, Calendar, LogOut, Zap, Trophy, Target,
   Star, Flame, TrendingUp, BookOpen, ChevronRight, Award,
-  GitFork, Link2, MapPin
+  GitFork, Link2, MapPin, FileText, ExternalLink
 } from 'lucide-react';
+
+import ClassicTemplate from '../components/resume-templates/ClassicTemplate';
+import ModernTemplate from '../components/resume-templates/ModernTemplate';
+import ProfessionalTemplate from '../components/resume-templates/ProfessionalTemplate';
+import CreativeTemplate from '../components/resume-templates/CreativeTemplate';
+import ElegantTemplate from '../components/resume-templates/ElegantTemplate';
+import MidnightTemplate from '../components/resume-templates/MidnightTemplate';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -103,18 +110,21 @@ const Profile = () => {
   const [stats, setStats] = useState(null);
   const [skillGaps, setSkillGaps] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [savedResume, setSavedResume] = useState(null);
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [sumRes, gapRes] = await Promise.all([
+        const [sumRes, gapRes, resumeRes] = await Promise.all([
           api.get('/analytics/summary?limit=100'),
           api.get('/analytics/skill-gap'),
+          api.get('/resume')
         ]);
         setStats(sumRes.data.data);
         setSessions(sumRes.data.data.sessionHistory || []);
         setSkillGaps(gapRes.data.data.skillGaps || []);
+        setSavedResume(resumeRes.data.data);
       } catch { /* fail silently */ }
       finally  { setLoading(false); }
     };
@@ -249,20 +259,71 @@ const Profile = () => {
 
             <Separator className="bg-border/50" />
 
-            {/* Achievements sidebar list */}
-            <div>
-                <p className="text-xs font-semibold text-muted-foreground dark:text-zinc-400 uppercase tracking-widest mb-3">Achievements</p>
-                <div className="flex flex-wrap gap-2">
-                  {badges.filter(b => b.earned).map(b => (
-                    <div key={b.id} title={b.desc} className={`p-2 rounded-full ${b.bg} ${b.color} cursor-default`}>
-                      {b.icon}
-                    </div>
-                  ))}
-                  {badges.filter(b => b.earned).length === 0 && (
-                    <p className="text-xs text-muted-foreground dark:text-zinc-400">Complete sessions to earn badges.</p>
-                  )}
+            <Separator className="bg-border/50" />
+
+            {/* Resume Preview Sidebar Sidebar */}
+            <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground dark:text-zinc-400 uppercase tracking-widest">Resume Draft</p>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 px-2 text-[10px] font-bold uppercase tracking-widest gap-1 hover:bg-primary/10 hover:text-primary"
+                    onClick={() => navigate('/resume-builder')}
+                  >
+                    Edit <ChevronRight size={10} />
+                  </Button>
                 </div>
-              </div>
+
+                {savedResume ? (
+                  <div 
+                    className="relative rounded-xl border border-border/60 dark:border-zinc-800/90 bg-card dark:bg-[#0d1117] overflow-hidden group cursor-pointer shadow-sm hover:shadow-md transition-all"
+                    onClick={() => navigate('/resume-builder')}
+                  >
+                     {/* Mini Preview Wrapper */}
+                     <div className="h-[200px] w-full overflow-hidden flex justify-center bg-zinc-50 dark:bg-black/40 p-3 pt-6">
+                        <div 
+                          className="bg-white origin-top shadow-2xl transition-transform duration-500 group-hover:scale-[0.27]" 
+                          style={{ 
+                            width: '210mm', 
+                            minHeight: '297mm', 
+                            transform: 'scale(0.25)', 
+                            transformOrigin: 'top center' 
+                          }}
+                        >
+                          {savedResume.selectedTemplate === 'classic' && <ClassicTemplate resumeData={savedResume} />}
+                          {(!savedResume.selectedTemplate || savedResume.selectedTemplate === 'modern') && <ModernTemplate resumeData={savedResume} />}
+                          {savedResume.selectedTemplate === 'professional' && <ProfessionalTemplate resumeData={savedResume} />}
+                          {savedResume.selectedTemplate === 'creative' && <CreativeTemplate resumeData={savedResume} />}
+                          {savedResume.selectedTemplate === 'elegant' && <ElegantTemplate resumeData={savedResume} />}
+                          {savedResume.selectedTemplate === 'midnight' && <MidnightTemplate resumeData={savedResume} />}
+                        </div>
+                     </div>
+                     
+                     {/* Overlay info */}
+                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all flex items-end justify-between">
+                        <div className="min-w-0">
+                            <p className="text-[10px] font-bold text-white uppercase tracking-tighter truncate">{savedResume.selectedTemplate || 'Classic'} Theme</p>
+                            <p className="text-[9px] text-white/50 truncate">Saved {formatDate(savedResume.updatedAt)}</p>
+                        </div>
+                        <div className="p-1.5 bg-primary rounded-full text-white shadow-lg">
+                            <ExternalLink size={12} />
+                        </div>
+                     </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border/50 dark:border-zinc-800/90 p-6 text-center space-y-3">
+                    <div className="w-10 h-10 bg-muted dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-muted-foreground opacity-50">
+                      <FileText size={16} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold">No draft</p>
+                      <p className="text-[10px] text-muted-foreground">Build your resume now.</p>
+                    </div>
+                    <Button variant="outline" size="sm" className="h-8 text-[10px]" onClick={() => navigate('/resume-builder')}>Start</Button>
+                  </div>
+                )}
+            </div>
           </aside>
 
           {/* ════ MAIN CONTENT ════ */}

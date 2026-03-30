@@ -1,7 +1,16 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { uploadResume } from '../controllers/resumeController.js';
+import { 
+  uploadResume, 
+  getResume, 
+  upsertResume, 
+  rewriteSection, 
+  calculateATS,
+  parseAndImportResume,
+  getResumeThemeCatalog,
+  syncResumeThemeCatalog
+} from '../controllers/resumeController.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -23,5 +32,15 @@ const upload = multer({
 });
 
 router.post('/upload', protect, upload.single('resume'), uploadResume);
+router.post('/import', protect, upload.single('resume'), parseAndImportResume);
+
+router.route('/')
+  .get(protect, getResume)
+  .post(protect, upsertResume);
+
+router.post('/rewrite', protect, rewriteSection);
+router.post('/ats-score', protect, calculateATS);
+router.get('/themes', protect, getResumeThemeCatalog);
+router.post('/themes/sync', protect, syncResumeThemeCatalog);
 
 export default router;
