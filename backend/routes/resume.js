@@ -5,6 +5,7 @@ import {
   uploadResume, 
   getResume, 
   upsertResume, 
+  emailResumeDraft,
   rewriteSection, 
   calculateATS,
   parseAndImportResume,
@@ -31,12 +32,26 @@ const upload = multer({
   }
 });
 
+const uploadPdf = multer({
+  storage,
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    const extname = path.extname(file.originalname).toLowerCase() === '.pdf';
+    if (extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Only PDF files are allowed'));
+  }
+});
+
 router.post('/upload', protect, upload.single('resume'), uploadResume);
 router.post('/import', protect, upload.single('resume'), parseAndImportResume);
 
 router.route('/')
   .get(protect, getResume)
   .post(protect, upsertResume);
+
+router.post('/email-draft', protect, uploadPdf.single('resumePdf'), emailResumeDraft);
 
 router.post('/rewrite', protect, rewriteSection);
 router.post('/ats-score', protect, calculateATS);

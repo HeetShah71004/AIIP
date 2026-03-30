@@ -17,6 +17,13 @@
 - **Resume Parsing**: Strategic analysis of PDF/DOCX resumes to generate questions that probe your specific experience and projects.
 - **Skill Gap Analysis**: AI identifies areas for improvement based on your resume versus target job descriptions.
 
+### 🧩 Smart Resume Builder
+- **Multi-Template Resume Engine**: Build and preview resumes with Classic, Modern, Professional, Creative, Elegant, and Midnight templates.
+- **Interactive Section Sequencing**: Control preview section order from the modal using checkbox-based sequence selection while keeping core identity blocks stable.
+- **Draft Persistence**: Save and restore both selected template and preview section order across sessions.
+- **ATS + Editing Workspace**: Scroll-friendly right sidebar with section navigator and ATS analysis for long-form resume editing.
+- **Import Feedback UX**: Imported resume filename is displayed with clear visual feedback after each upload.
+
 ### 💻 Professional Code Playground (IDE)
 - **Edge-to-Edge IDE**: A distraction-free, 0-100% **resizable three-panel layout** featuring Problem Descriptions, Monaco Editor, and AI Discussion.
 - **Multi-Language Support**: Robust execution for Python, JavaScript, Java, C++, and more.
@@ -76,8 +83,8 @@
 
 1. **Clone the repo:**
    ```bash
-   git clone https://github.com/your-username/aip.git
-   cd aip
+   git clone https://github.com/HeetShah71004/AIIP.git
+   cd AIIP
    ```
 
 2. **Install dependencies:**

@@ -15,12 +15,23 @@ import {
   Download, 
   Save, 
   BarChart3,
+  CheckCircle2,
+  Lock,
   Briefcase,
   GraduationCap,
   Hammer,
   Layout,
+  GripVertical,
+  ScrollText,
+  Blocks,
+  Wand2,
+  Gem,
+  MoonStar,
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
   Upload,
+  FileText,
   Code,
   Eye,
   X
@@ -46,6 +57,67 @@ const TEMPLATE_LABELS = {
   creative: 'Creative',
   elegant: 'Elegant',
   midnight: 'Midnight'
+};
+
+const THEME_TRIGGER_STYLES = {
+  classic: {
+    Icon: ScrollText,
+    classes: 'bg-gradient-to-r from-amber-300 to-orange-400 border-orange-300/80 hover:shadow-orange-400/40',
+    badgeClasses: 'border-orange-400/35 bg-orange-400/10 text-orange-700 dark:text-orange-300'
+  },
+  modern: {
+    Icon: Blocks,
+    classes: 'bg-gradient-to-r from-cyan-300 to-sky-400 border-cyan-300/80 hover:shadow-cyan-400/40',
+    badgeClasses: 'border-cyan-400/35 bg-cyan-400/10 text-cyan-700 dark:text-cyan-300'
+  },
+  professional: {
+    Icon: Briefcase,
+    classes: 'bg-gradient-to-r from-slate-300 to-slate-400 border-slate-300/80 hover:shadow-slate-400/40',
+    badgeClasses: 'border-slate-400/35 bg-slate-400/10 text-slate-700 dark:text-slate-300'
+  },
+  creative: {
+    Icon: Wand2,
+    classes: 'bg-gradient-to-r from-fuchsia-300 to-violet-400 border-fuchsia-300/80 hover:shadow-violet-400/40',
+    badgeClasses: 'border-violet-400/35 bg-violet-400/10 text-violet-700 dark:text-violet-300'
+  },
+  elegant: {
+    Icon: Gem,
+    classes: 'bg-gradient-to-r from-rose-300 to-pink-400 border-rose-300/80 hover:shadow-rose-400/40',
+    badgeClasses: 'border-rose-400/35 bg-rose-400/10 text-rose-700 dark:text-rose-300'
+  },
+  midnight: {
+    Icon: MoonStar,
+    classes: 'bg-gradient-to-r from-indigo-300 to-blue-400 border-indigo-300/80 hover:shadow-indigo-400/40',
+    badgeClasses: 'border-indigo-400/35 bg-indigo-400/10 text-indigo-700 dark:text-indigo-300'
+  }
+};
+
+const PREVIEW_SECTION_KEYS = ['experience', 'projects', 'education', 'skills', 'languages'];
+const PREVIEW_SECTION_LABELS = {
+  experience: 'Experience',
+  projects: 'Projects',
+  education: 'Education',
+  skills: 'Skills',
+  languages: 'Languages'
+};
+
+const FORM_SECTION_NAV_ITEMS = [
+  { key: 'personalInfo', label: 'Personal Info', subtitle: 'Identity & contact details' },
+  { key: 'summary', label: 'Summary', subtitle: 'Professional snapshot' },
+  { key: 'experience', label: 'Experience', subtitle: 'Work history & roles' },
+  { key: 'education', label: 'Education', subtitle: 'Academic background' },
+  { key: 'projects', label: 'Projects', subtitle: 'Impactful project highlights' },
+  { key: 'skills', label: 'Skills', subtitle: 'Core technical strengths' },
+  { key: 'languages', label: 'Languages', subtitle: 'Spoken language proficiency' }
+];
+
+const normalizeSectionOrder = (incomingOrder) => {
+  if (!Array.isArray(incomingOrder)) return PREVIEW_SECTION_KEYS;
+
+  const deduped = [...new Set(incomingOrder)].filter((key) => PREVIEW_SECTION_KEYS.includes(key));
+  const missing = PREVIEW_SECTION_KEYS.filter((key) => !deduped.includes(key));
+
+  return [...deduped, ...missing];
 };
 
 const ResumeBuilder = () => {
@@ -77,12 +149,58 @@ const ResumeBuilder = () => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isThemeExplorerOpen, setIsThemeExplorerOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('classic');
+  const [previewSectionOrder, setPreviewSectionOrder] = useState(PREVIEW_SECTION_KEYS);
+  const [previewOrderSelection, setPreviewOrderSelection] = useState([]);
+  const [importedFileName, setImportedFileName] = useState('');
+  const [showImportFilePulse, setShowImportFilePulse] = useState(false);
+  const [activeFormSection, setActiveFormSection] = useState('personalInfo');
+  const [draggingProjectIndex, setDraggingProjectIndex] = useState(null);
+  const [dragOverProjectIndex, setDragOverProjectIndex] = useState(null);
   const resumeRef = useRef(null);
   const fileInputRef = useRef(null);
+  const formSectionRefs = useRef({});
   const selectedTemplateLabel = TEMPLATE_LABELS[selectedTemplate] || 'Classic';
+  const themeTriggerVisual = THEME_TRIGGER_STYLES[selectedTemplate] || THEME_TRIGGER_STYLES.classic;
+  const ThemeTriggerIcon = themeTriggerVisual.Icon;
+  const themeAppliedBadgeClasses = themeTriggerVisual.badgeClasses || 'border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-300';
 
   useEffect(() => {
     fetchResume();
+  }, []);
+
+  useEffect(() => {
+    if (!showImportFilePulse) return;
+
+    const timer = setTimeout(() => setShowImportFilePulse(false), 1200);
+    return () => clearTimeout(timer);
+  }, [showImportFilePulse]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntries = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+
+        if (visibleEntries.length > 0) {
+          const sectionKey = visibleEntries[0].target.getAttribute('data-section-key');
+          if (sectionKey) setActiveFormSection(sectionKey);
+        }
+      },
+      {
+        root: null,
+        threshold: [0.15, 0.35, 0.55],
+        rootMargin: '-20% 0px -55% 0px'
+      }
+    );
+
+    const currentSections = FORM_SECTION_NAV_ITEMS
+      .map((item) => formSectionRefs.current[item.key])
+      .filter(Boolean);
+
+    currentSections.forEach((sectionEl) => observer.observe(sectionEl));
+
+    return () => observer.disconnect();
   }, []);
 
   const fetchResume = async () => {
@@ -97,6 +215,7 @@ const ResumeBuilder = () => {
           const incomingTemplate = response.data.data.selectedTemplate;
           setSelectedTemplate(LOCAL_TEMPLATE_SLUGS.has(incomingTemplate) ? incomingTemplate : 'classic');
         }
+        setPreviewSectionOrder(normalizeSectionOrder(response.data.data.previewSectionOrder));
       }
     } catch (error) {
       console.error('Error fetching resume:', error);
@@ -131,6 +250,71 @@ const ResumeBuilder = () => {
     const updatedArray = [...resumeData[section]];
     updatedArray.splice(index, 1);
     setResumeData(prev => ({ ...prev, [section]: updatedArray }));
+  };
+
+  const moveItem = (section, index, direction) => {
+    setResumeData((prev) => {
+      const items = [...(prev[section] || [])];
+      const targetIndex = index + direction;
+
+      if (targetIndex < 0 || targetIndex >= items.length) {
+        return prev;
+      }
+
+      const temp = items[index];
+      items[index] = items[targetIndex];
+      items[targetIndex] = temp;
+
+      return {
+        ...prev,
+        [section]: items
+      };
+    });
+  };
+
+  const reorderItem = (section, fromIndex, toIndex) => {
+    setResumeData((prev) => {
+      const items = [...(prev[section] || [])];
+
+      if (
+        fromIndex < 0
+        || toIndex < 0
+        || fromIndex >= items.length
+        || toIndex >= items.length
+        || fromIndex === toIndex
+      ) {
+        return prev;
+      }
+
+      const [movedItem] = items.splice(fromIndex, 1);
+      items.splice(toIndex, 0, movedItem);
+
+      return {
+        ...prev,
+        [section]: items
+      };
+    });
+  };
+
+  const handleProjectDragStart = (index) => {
+    setDraggingProjectIndex(index);
+  };
+
+  const handleProjectDragOver = (index) => {
+    setDragOverProjectIndex(index);
+  };
+
+  const handleProjectDrop = (index) => {
+    if (draggingProjectIndex === null) return;
+
+    reorderItem('projects', draggingProjectIndex, index);
+    setDraggingProjectIndex(null);
+    setDragOverProjectIndex(null);
+  };
+
+  const handleProjectDragEnd = () => {
+    setDraggingProjectIndex(null);
+    setDragOverProjectIndex(null);
   };
 
   const handleRewrite = async (section, index = null) => {
@@ -173,8 +357,37 @@ const ResumeBuilder = () => {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      await axios.post('/resume', { ...resumeData, selectedTemplate });
-      toast.success('Resume saved successfully!');
+      await axios.post('/resume', {
+        ...resumeData,
+        selectedTemplate,
+        previewSectionOrder
+      });
+
+      let pdfBlob = null;
+      let pdfFilename = `${resumeData.personalInfo.fullName || 'Resume'}-draft.pdf`;
+      try {
+        const generated = await generateResumePdfBlob({ fitToSinglePage: true });
+        pdfBlob = generated.blob;
+        pdfFilename = generated.filename;
+      } catch (pdfError) {
+        console.error('Save Draft PDF generation failed:', pdfError);
+      }
+
+      if (pdfBlob) {
+        const emailFormData = new FormData();
+        emailFormData.append('resumePdf', pdfBlob, pdfFilename);
+
+        try {
+          await axios.post('/resume/email-draft', emailFormData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          toast.success('Resume saved and emailed successfully with selected template PDF!');
+        } catch (emailError) {
+          toast.success('Resume saved, but email delivery failed.');
+        }
+      } else {
+        toast.success('Resume saved, but preview PDF could not be generated for email.');
+      }
     } catch (error) {
       toast.error('Failed to save resume');
     } finally {
@@ -234,6 +447,8 @@ const ResumeBuilder = () => {
       if (response.data.success) {
         const importedData = response.data.data;
         setResumeData(importedData);
+        setImportedFileName(file.name);
+        setShowImportFilePulse(true);
         toast.success('Resume imported successfully!', { id: 'import-toast' });
         
         // Auto-trigger ATS analysis with the new data
@@ -267,40 +482,71 @@ const ResumeBuilder = () => {
     }
   };
 
+  const generateResumePdfBlob = async ({ fitToSinglePage = false } = {}) => {
+    const element = resumeRef.current;
+    if (!element) {
+      throw new Error('Resume preview is not available for PDF generation.');
+    }
+
+    // Temporary style adjustments for PDF capture
+    const canvas = await html2canvas(element, {
+      scale: 1.35,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false
+    });
+
+    // JPEG keeps attachment size significantly lower than PNG for large resume previews.
+    const imgData = canvas.toDataURL('image/jpeg', 0.82);
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    if (fitToSinglePage) {
+      const fittedHeight = Math.min(pageHeight, imgHeight);
+      const fittedWidth = (canvas.width * fittedHeight) / canvas.height;
+      const x = Math.max(0, (pageWidth - fittedWidth) / 2);
+
+      pdf.addImage(imgData, 'JPEG', x, 0, fittedWidth, fittedHeight, undefined, 'FAST');
+    } else {
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pageHeight;
+
+      // Only add new pages if there's significant content left (more than 2mm)
+      while (heightLeft > 2) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
+      }
+    }
+
+    return {
+      blob: pdf.output('blob'),
+      filename: `${resumeData.personalInfo.fullName || 'Resume'}-draft.pdf`
+    };
+  };
+
   const exportPDF = async () => {
     const element = resumeRef.current;
     if (!element) return;
 
     try {
       toast.loading('Generating PDF...', { id: 'pdf-toast' });
-      
-      // Temporary style adjustments for PDF capture
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      const generated = await generateResumePdfBlob();
+      const blobUrl = URL.createObjectURL(generated.blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${resumeData.personalInfo.fullName || 'Resume'}.pdf`;
+      link.click();
+      URL.revokeObjectURL(blobUrl);
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`${resumeData.personalInfo.fullName || 'Resume'}.pdf`);
       toast.success('Resume downloaded!', { id: 'pdf-toast' });
     } catch (error) {
       console.error('PDF Export Error:', error);
@@ -309,15 +555,78 @@ const ResumeBuilder = () => {
   };
 
   const renderSelectedTemplate = () => {
-    if (selectedTemplate === 'classic') return <ClassicTemplate resumeData={resumeData} />;
-    if (selectedTemplate === 'modern') return <ModernTemplate resumeData={resumeData} />;
-    if (selectedTemplate === 'professional') return <ProfessionalTemplate resumeData={resumeData} />;
-    if (selectedTemplate === 'creative') return <CreativeTemplate resumeData={resumeData} />;
-    if (selectedTemplate === 'elegant') return <ElegantTemplate resumeData={resumeData} />;
-    if (selectedTemplate === 'midnight') return <MidnightTemplate resumeData={resumeData} />;
+    if (selectedTemplate === 'classic') return <ClassicTemplate resumeData={resumeData} sectionOrder={previewSectionOrder} />;
+    if (selectedTemplate === 'modern') return <ModernTemplate resumeData={resumeData} sectionOrder={previewSectionOrder} />;
+    if (selectedTemplate === 'professional') return <ProfessionalTemplate resumeData={resumeData} sectionOrder={previewSectionOrder} />;
+    if (selectedTemplate === 'creative') return <CreativeTemplate resumeData={resumeData} sectionOrder={previewSectionOrder} />;
+    if (selectedTemplate === 'elegant') return <ElegantTemplate resumeData={resumeData} sectionOrder={previewSectionOrder} />;
+    if (selectedTemplate === 'midnight') return <MidnightTemplate resumeData={resumeData} sectionOrder={previewSectionOrder} />;
 
-    return <ClassicTemplate resumeData={resumeData} />;
+    return <ClassicTemplate resumeData={resumeData} sectionOrder={previewSectionOrder} />;
   };
+
+  const movePreviewSection = (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= previewSectionOrder.length) return;
+
+    setPreviewSectionOrder((prevOrder) => {
+      const nextOrder = [...prevOrder];
+      const temp = nextOrder[index];
+      nextOrder[index] = nextOrder[targetIndex];
+      nextOrder[targetIndex] = temp;
+      return nextOrder;
+    });
+  };
+
+  const handlePreviewOrderCheckbox = (sectionKey, checked) => {
+    setPreviewOrderSelection((prevSelection) => {
+      const nextSelection = checked
+        ? [...prevSelection, sectionKey]
+        : prevSelection.filter((key) => key !== sectionKey);
+
+      const remaining = PREVIEW_SECTION_KEYS.filter((key) => !nextSelection.includes(key));
+      setPreviewSectionOrder([...nextSelection, ...remaining]);
+
+      return nextSelection;
+    });
+  };
+
+  const scrollToFormSection = (sectionKey) => {
+    const sectionElement = formSectionRefs.current[sectionKey];
+    if (!sectionElement) return;
+
+    setActiveFormSection(sectionKey);
+    sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const sectionCompletionStatus = {
+    personalInfo: Boolean(
+      resumeData.personalInfo?.fullName?.trim()
+      && resumeData.personalInfo?.email?.trim()
+      && resumeData.personalInfo?.phone?.trim()
+    ),
+    summary: Boolean(resumeData.summary?.trim() && resumeData.summary.trim().length >= 30),
+    experience: Array.isArray(resumeData.experience)
+      && resumeData.experience.length > 0
+      && resumeData.experience.every((item) => item.role?.trim() && item.company?.trim() && item.description?.trim()),
+    education: Array.isArray(resumeData.education)
+      && resumeData.education.length > 0
+      && resumeData.education.every((item) => item.degree?.trim() && item.school?.trim()),
+    projects: Array.isArray(resumeData.projects)
+      && resumeData.projects.length > 0
+      && resumeData.projects.every((item) => item.name?.trim() && item.description?.trim()),
+    skills: Array.isArray(resumeData.skills) && resumeData.skills.length >= 3,
+    languages: Array.isArray(resumeData.languages) && resumeData.languages.length >= 1
+  };
+
+  const completionCount = FORM_SECTION_NAV_ITEMS.filter((item) => sectionCompletionStatus[item.key]).length;
+  const completionPercent = Math.round((completionCount / FORM_SECTION_NAV_ITEMS.length) * 100);
+  const firstIncompleteIndex = FORM_SECTION_NAV_ITEMS.findIndex((item) => !sectionCompletionStatus[item.key]);
+
+  const activeFormSectionIndex = FORM_SECTION_NAV_ITEMS.findIndex((item) => item.key === activeFormSection);
+  const navigatorStartIndex = activeFormSectionIndex <= 0 ? 0 : activeFormSectionIndex - 1;
+  const navigatorEndIndex = Math.min(FORM_SECTION_NAV_ITEMS.length, navigatorStartIndex + 3);
+  const visibleNavigatorItems = FORM_SECTION_NAV_ITEMS.slice(navigatorStartIndex, navigatorEndIndex);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0a0a0a] pt-12 pb-24 px-4 md:px-8">
@@ -341,7 +650,7 @@ const ResumeBuilder = () => {
               <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">AI Resume Builder</h1>
             </div>
             <div className="mb-2">
-              <span className="inline-flex items-center rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-700 dark:text-teal-300">
+              <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${themeAppliedBadgeClasses}`}>
                 Applied Theme: {selectedTemplateLabel}
               </span>
             </div>
@@ -351,7 +660,7 @@ const ResumeBuilder = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 md:items-end">
             <input 
               type="file" 
               ref={fileInputRef} 
@@ -359,43 +668,62 @@ const ResumeBuilder = () => {
               accept=".pdf,.doc,.docx" 
               onChange={handleFileChange} 
             />
+            <div className="flex items-center gap-3 flex-wrap md:justify-end">
+              <button
+                onClick={() => setIsThemeExplorerOpen(true)}
+                className={`group flex items-center gap-2 px-5 py-2.5 border rounded-xl text-slate-900 hover:shadow-xl hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98] transition-all font-bold tracking-tight brightness-100 hover:brightness-105 ${themeTriggerVisual.classes}`}
+              >
+                <ThemeTriggerIcon className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                Explore Themes ({selectedTemplateLabel})
+              </button>
+              <button
+                onClick={() => setIsPreviewOpen(true)}
+                className="group flex items-center gap-2 px-5 py-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold"
+              >
+                <Eye className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                Preview
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="group flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 hover:shadow-md hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98] transition-all font-medium disabled:opacity-50"
+              >
+                <Save className={`w-4 h-4 ${isSaving ? 'animate-spin' : 'group-hover:rotate-12'} transition-transform`} />
+                {isSaving ? 'Saving...' : 'Save Draft'}
+              </button>
+              <button
+                onClick={exportPDF}
+                className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-xl text-slate-900 dark:text-white hover:shadow-xl hover:shadow-teal-500/30 hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold brightness-100 hover:brightness-105"
+              >
+                <Download className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
+                Export PDF
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap md:justify-end">
             <button
               onClick={handleImportClick}
               disabled={isImporting}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all font-medium disabled:opacity-50"
+              className="group flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 hover:shadow-md hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98] transition-all font-medium disabled:opacity-50"
             >
-              <Upload className={`w-4 h-4 ${isImporting ? 'animate-bounce' : ''}`} />
+              <Upload className={`w-4 h-4 ${isImporting ? 'animate-bounce' : 'group-hover:-translate-y-1'} transition-transform`} />
               {isImporting ? 'Importing...' : 'Import Resume'}
             </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all font-medium disabled:opacity-50"
-            >
-              <Save className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
-              {isSaving ? 'Saving...' : 'Save Draft'}
-            </button>
-            <button
-              onClick={() => setIsThemeExplorerOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all font-semibold text-sm"
-            >
-              <Layout className="w-4 h-4" />
-              Theme Explorer ({selectedTemplateLabel})
-            </button>
-            <button
-              onClick={() => setIsPreviewOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all font-semibold"
-            >
-              <Eye className="w-4 h-4" />
-              Preview
-            </button>
-            <button
-              onClick={exportPDF}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-xl text-slate-900 dark:text-white hover:shadow-lg hover:shadow-teal-500/20 transition-all font-semibold"
-            >
-              <Download className="w-4 h-4" />
-              Export PDF
-            </button>
+
+            {importedFileName && (
+              <div
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium max-w-[320px] md:max-w-[380px] transition-all ${
+                  showImportFilePulse
+                    ? 'bg-teal-500/10 border-teal-500/30 text-teal-700 dark:text-teal-300 shadow-md shadow-teal-500/20'
+                    : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/80'
+                }`}
+              >
+                <FileText className={`w-4 h-4 shrink-0 ${showImportFilePulse ? 'animate-pulse' : ''}`} />
+                <span className="text-xs uppercase tracking-wide opacity-70">Last imported:</span>
+                <span className="truncate font-semibold" title={importedFileName}>{importedFileName}</span>
+              </div>
+            )}
+            </div>
           </div>
         </div>
 
@@ -404,7 +732,13 @@ const ResumeBuilder = () => {
           <div className="lg:col-span-8 space-y-8">
             
             {/* Personal Information */}
-            <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <section
+              data-section-key="personalInfo"
+              ref={(el) => {
+                formSectionRefs.current.personalInfo = el;
+              }}
+              className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm"
+            >
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10">
                   <User className="w-5 h-5 text-teal-400" />
@@ -514,7 +848,13 @@ const ResumeBuilder = () => {
             </section>
 
             {/* Professional Summary */}
-            <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <section
+              data-section-key="summary"
+              ref={(el) => {
+                formSectionRefs.current.summary = el;
+              }}
+              className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm"
+            >
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10">
@@ -525,9 +865,9 @@ const ResumeBuilder = () => {
                 <button
                   onClick={() => handleRewrite('summary')}
                   disabled={isRewriting === 'summary'}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-teal-500/10 border border-teal-500/20 rounded-lg text-teal-400 hover:bg-teal-500/20 transition-all text-sm font-medium disabled:opacity-50"
+                  className="group flex items-center gap-2 px-3 py-1.5 bg-teal-500/10 border border-teal-500/20 rounded-lg text-teal-400 hover:bg-teal-500/20 hover:shadow-md hover:shadow-teal-500/10 hover:-translate-y-0.5 hover:scale-[1.05] active:scale-[0.95] transition-all text-sm font-medium disabled:opacity-50"
                 >
-                  <Sparkles className={`w-3.5 h-3.5 ${isRewriting === 'summary' ? 'animate-spin' : ''}`} />
+                  <Sparkles className={`w-3.5 h-3.5 ${isRewriting === 'summary' ? 'animate-spin' : 'group-hover:rotate-12'} transition-transform`} />
                   AI Rewrite
                 </button>
               </div>
@@ -541,7 +881,13 @@ const ResumeBuilder = () => {
             </section>
 
             {/* Experience */}
-            <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <section
+              data-section-key="experience"
+              ref={(el) => {
+                formSectionRefs.current.experience = el;
+              }}
+              className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm"
+            >
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10">
@@ -551,9 +897,9 @@ const ResumeBuilder = () => {
                 </div>
                 <button
                   onClick={() => addItem('experience', { company: '', role: '', location: '', startDate: '', endDate: '', description: '' })}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-sm font-medium"
+                  className="group flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 hover:shadow-sm hover:-translate-y-0.5 hover:scale-[1.02] active:scale-[0.98] transition-all text-sm font-medium"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
                   Add Experience
                 </button>
               </div>
@@ -563,7 +909,7 @@ const ResumeBuilder = () => {
                   <div key={idx} className="relative p-6 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl group">
                     <button 
                       onClick={() => removeItem('experience', idx)}
-                      className="absolute top-4 right-4 text-slate-400 dark:text-white/20 hover:text-rose-500 transition-colors"
+                      className="absolute top-4 right-4 p-1 rounded-md text-slate-400 dark:text-white/20 hover:text-rose-500 hover:bg-rose-500/10 transition-all hover:scale-110 active:scale-95"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -619,7 +965,7 @@ const ResumeBuilder = () => {
                           disabled={isRewriting === `experience-${idx}`}
                           className="flex items-center gap-1.5 px-2 py-1 text-teal-400 hover:text-teal-300 transition-colors text-[10px] font-bold uppercase tracking-widest disabled:opacity-50"
                         >
-                          <Sparkles className={`w-3 h-3 ${isRewriting === `experience-${idx}` ? 'animate-spin' : ''}`} />
+                          <Sparkles className={`w-3 h-3 ${isRewriting === `experience-${idx}` ? 'animate-spin' : 'group-hover:rotate-12'} transition-transform`} />
                           Improve with AI
                         </button>
                       </div>
@@ -641,7 +987,13 @@ const ResumeBuilder = () => {
             </section>
 
             {/* Education */}
-            <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <section
+              data-section-key="education"
+              ref={(el) => {
+                formSectionRefs.current.education = el;
+              }}
+              className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm"
+            >
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10">
@@ -651,9 +1003,9 @@ const ResumeBuilder = () => {
                 </div>
                 <button
                   onClick={() => addItem('education', { school: '', degree: '', startDate: '', endDate: '', description: '' })}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-sm font-medium"
+                  className="group flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 hover:shadow-sm hover:-translate-y-0.5 hover:scale-[1.02] active:scale-[0.98] transition-all text-sm font-medium"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
                   Add Education
                 </button>
               </div>
@@ -663,7 +1015,7 @@ const ResumeBuilder = () => {
                   <div key={idx} className="relative p-6 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl group">
                     <button 
                       onClick={() => removeItem('education', idx)}
-                      className="absolute top-4 right-4 text-slate-400 dark:text-white/20 hover:text-rose-500 transition-colors"
+                      className="absolute top-4 right-4 p-1 rounded-md text-slate-400 dark:text-white/20 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -733,7 +1085,13 @@ const ResumeBuilder = () => {
             </section>
 
             {/* Projects */}
-            <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <section
+              data-section-key="projects"
+              ref={(el) => {
+                formSectionRefs.current.projects = el;
+              }}
+              className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm"
+            >
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10">
@@ -743,22 +1101,69 @@ const ResumeBuilder = () => {
                 </div>
                 <button
                   onClick={() => addItem('projects', { name: '', description: '', link: '', technologies: [] })}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-sm font-medium"
+                  className="group flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 hover:shadow-sm hover:-translate-y-0.5 hover:scale-[1.02] active:scale-[0.98] transition-all text-sm font-medium"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
                   Add Project
                 </button>
               </div>
 
               <div className="space-y-8">
                 {resumeData.projects.map((proj, idx) => (
-                  <div key={idx} className="relative p-6 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl group">
-                    <button 
-                      onClick={() => removeItem('projects', idx)}
-                      className="absolute top-4 right-4 text-slate-400 dark:text-white/20 hover:text-rose-500 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <div
+                    key={idx}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (draggingProjectIndex !== null && draggingProjectIndex !== idx) {
+                        handleProjectDragOver(idx);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleProjectDrop(idx);
+                    }}
+                    onDragEnd={handleProjectDragEnd}
+                    className={`relative p-6 bg-white dark:bg-white/5 border rounded-xl group transition-all ${
+                      dragOverProjectIndex === idx
+                        ? 'border-teal-400 dark:border-teal-500/60 shadow-lg shadow-teal-500/10'
+                        : 'border-slate-200 dark:border-white/10'
+                    }`}
+                  >
+                    <div className="absolute top-4 right-4 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        draggable
+                        onDragStart={() => handleProjectDragStart(idx)}
+                        onDragEnd={handleProjectDragEnd}
+                        className="p-1 rounded-md text-slate-400 dark:text-white/25 hover:text-teal-500 hover:bg-teal-500/10 transition-colors cursor-grab active:cursor-grabbing"
+                        title="Drag to reorder project"
+                      >
+                        <GripVertical className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => moveItem('projects', idx, -1)}
+                        disabled={idx === 0}
+                        className="p-1 rounded-md text-slate-400 dark:text-white/20 hover:text-teal-500 hover:bg-teal-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Move project up"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => moveItem('projects', idx, 1)}
+                        disabled={idx === resumeData.projects.length - 1}
+                        className="p-1 rounded-md text-slate-400 dark:text-white/20 hover:text-teal-500 hover:bg-teal-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Move project down"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => removeItem('projects', idx)}
+                        className="p-1 rounded-md text-slate-400 dark:text-white/20 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                        title="Delete project"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
@@ -826,7 +1231,13 @@ const ResumeBuilder = () => {
             </section>
 
             {/* Skills */}
-            <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <section
+              data-section-key="skills"
+              ref={(el) => {
+                formSectionRefs.current.skills = el;
+              }}
+              className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm"
+            >
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10">
                   <Hammer className="w-5 h-5 text-teal-400" />
@@ -859,7 +1270,7 @@ const ResumeBuilder = () => {
                       className="group flex items-center gap-2 px-3 py-1.5 bg-teal-500/10 border border-teal-500/20 rounded-lg text-teal-400 text-sm font-medium"
                     >
                       {skill}
-                      <button onClick={() => removeItem('skills', idx)} className="text-teal-600/50 dark:text-teal-400/50 hover:text-teal-400">
+                      <button onClick={() => removeItem('skills', idx)} className="p-0.5 rounded text-teal-600/50 dark:text-teal-400/50 hover:text-rose-500 hover:bg-rose-500/10 transition-all hover:scale-110 active:scale-90">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </span>
@@ -872,7 +1283,13 @@ const ResumeBuilder = () => {
             </section>
 
             {/* Languages */}
-            <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <section
+              data-section-key="languages"
+              ref={(el) => {
+                formSectionRefs.current.languages = el;
+              }}
+              className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm"
+            >
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10">
                   <Globe className="w-5 h-5 text-teal-400" />
@@ -907,7 +1324,7 @@ const ResumeBuilder = () => {
                       className="group flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-indigo-400 text-sm font-medium"
                     >
                       {lang}
-                      <button onClick={() => removeItem('languages', idx)} className="text-indigo-600/50 dark:text-indigo-400/50 hover:text-indigo-400">
+                      <button onClick={() => removeItem('languages', idx)} className="p-0.5 rounded text-indigo-600/50 dark:text-indigo-400/50 hover:text-rose-500 hover:bg-rose-500/10 transition-all hover:scale-110 active:scale-90">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </span>
@@ -922,42 +1339,106 @@ const ResumeBuilder = () => {
           </div>
 
           {/* Sidebar Area */}
-          <div className="lg:col-span-4 space-y-8">
-            {/* ATS Analysis Card */}
-            <div className="sticky top-24 space-y-6">
-              <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-                <div className="flex items-center gap-3 mb-6">
-                  <BarChart3 className="w-5 h-5 text-emerald-400" />
+          <div className="lg:col-span-4">
+            <div className="sticky top-24 z-10 space-y-6">
+              <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 backdrop-blur-sm">
+                <div className="mb-4">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">Section Navigator</p>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-white/50">
+                      {completionCount}/{FORM_SECTION_NAV_ITEMS.length} complete
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden border border-slate-200 dark:border-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
+                      style={{ width: `${completionPercent}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {visibleNavigatorItems.map((item, localIndex) => {
+                    const index = navigatorStartIndex + localIndex;
+                    const isCurrent = activeFormSection === item.key;
+                    const isPassed = activeFormSectionIndex > -1 && index < activeFormSectionIndex;
+                    const isNext = activeFormSectionIndex > -1 && index === activeFormSectionIndex + 1;
+                    const isCompleted = sectionCompletionStatus[item.key];
+                    const isLocked = firstIncompleteIndex !== -1 && index > firstIncompleteIndex + 1;
+
+                    return (
+                      <button
+                        key={item.key}
+                        disabled={isLocked}
+                        onClick={() => scrollToFormSection(item.key)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors border ${
+                          isLocked
+                            ? 'opacity-45 cursor-not-allowed bg-slate-100/80 dark:bg-white/5 text-slate-500 dark:text-white/40 border-transparent'
+                            : ''
+                        } ${
+                          isCurrent
+                            ? 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30'
+                            : isPassed
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20'
+                              : isNext
+                                ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20'
+                                : 'text-slate-600 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/10 border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium leading-tight">{item.label}</p>
+                            <p className="text-[11px] opacity-75 mt-0.5">{item.subtitle}</p>
+                          </div>
+                          <div className="shrink-0 pt-0.5">
+                            {isLocked ? (
+                              <Lock className="w-3.5 h-3.5 text-slate-400 dark:text-white/40" />
+                            ) : isCompleted ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            ) : isCurrent ? (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider">Current</span>
+                            ) : isNext ? (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider">Next</span>
+                            ) : (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider opacity-70">Open</span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ATS Analysis Card */}
+              <div className="space-y-6">
+              <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                    <BarChart3 className="w-4.5 h-4.5 text-emerald-500" />
+                  </div>
                   <h3 className="font-semibold text-slate-900 dark:text-white">Resume Optimization</h3>
                 </div>
                 
-                <p className="text-sm text-slate-500 dark:text-white/40 mb-6">
+                <p className="text-sm text-slate-500 dark:text-white/40 mb-5">
                   Check your resume against ATS standards. Our AI will analyze keywords, formatting, and impact.
                 </p>
 
                 <button
                   onClick={handleAnalyze}
                   disabled={isAnalyzing}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-500 text-slate-900 dark:text-white rounded-xl font-semibold hover:bg-emerald-600 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20"
+                  className="group w-full flex items-center justify-center gap-2 py-3 bg-emerald-500 text-slate-900 dark:text-white rounded-xl font-semibold hover:bg-emerald-600 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20"
                 >
                   {isAnalyzing ? (
                     <Sparkles className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Sparkles className="w-4 h-4" />
+                    <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
                   )}
                   {isAnalyzing ? 'Analyzing...' : 'Analyze ATS Score'}
                 </button>
               </div>
 
               <ATSScoreCard analysis={analysis} isLoading={isAnalyzing} />
-
-              {/* Tips Card */}
-              <div className="bg-gradient-to-br from-teal-500/10 to-emerald-500/10 border border-teal-500/20 rounded-2xl p-6">
-                <h4 className="text-sm font-semibold text-teal-400 mb-2 uppercase tracking-widest">Pro Tip</h4>
-                <p className="text-sm text-slate-600 dark:text-white/60 leading-relaxed">
-                  Focus on **quantifying** your achievements. Instead of saying "Optimized database," say "Reduced query latency by 40% through index optimization."
-                </p>
-              </div>
+            </div>
             </div>
           </div>
         </div>
@@ -988,10 +1469,51 @@ const ResumeBuilder = () => {
                 </button>
                 <button
                   onClick={() => setIsPreviewOpen(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white bg-slate-100 dark:bg-white/5 rounded-full transition-colors"
+                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 dark:hover:text-rose-400 dark:hover:bg-rose-500/20 bg-slate-100 dark:bg-white/5 rounded-full transition-all hover:rotate-90"
                 >
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-3 bg-white/80 dark:bg-[#111]/80 border-b border-slate-200 dark:border-white/10 shrink-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-white/60 mb-2">
+                Preview Section Order
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-white/50 mb-2">
+                Select sections in the order you want them to appear.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PREVIEW_SECTION_KEYS.map((sectionKey) => {
+                  const selectionIndex = previewOrderSelection.indexOf(sectionKey);
+                  const isSelected = selectionIndex > -1;
+
+                  return (
+                    <label
+                      key={sectionKey}
+                      className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 cursor-pointer transition-colors ${
+                        isSelected
+                          ? 'border-teal-500/35 bg-teal-500/10'
+                          : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-teal-500"
+                        checked={isSelected}
+                        onChange={(e) => handlePreviewOrderCheckbox(sectionKey, e.target.checked)}
+                      />
+                      <span className="text-xs font-medium text-slate-700 dark:text-white/80">
+                        {PREVIEW_SECTION_LABELS[sectionKey]}
+                      </span>
+                      {isSelected && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">
+                          {selectionIndex + 1}
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
             </div>
             

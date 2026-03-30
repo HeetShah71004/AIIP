@@ -1,8 +1,10 @@
 import ResumeService from '../services/resumeService.js';
 import { extractStructuredDataFromResume, rewriteResumeSection, analyzeResumeATS, parseResumeForBuilder } from '../services/aiService.js';
 import { getThemeCatalog, syncThemeCatalog } from '../services/themeCatalogService.js';
+import { sendResumeDraftEmail } from '../services/emailService.js';
 import Session from '../models/Session.js';
 import Resume from '../models/Resume.js';
+import User from '../models/User.js';
 import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
 import dotenv from 'dotenv';
@@ -235,6 +237,51 @@ export const upsertResume = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: resume
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Email saved resume draft with uploaded preview PDF
+// @route   POST /api/v1/resume/email-draft
+// @access  Private
+export const emailResumeDraft = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId).select('email');
+    const resume = await Resume.findOne({ user: userId });
+
+    if (!resume) {
+      return res.status(404).json({ success: false, error: 'Resume not found. Save draft before emailing.' });
+    }
+
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, error: 'Preview PDF file is required.' });
+    }
+
+    const recipientEmail = user?.email || resume?.personalInfo?.email;
+    const filename = req.file.originalname || 'resume-draft.pdf';
+
+    const emailMeta = await sendResumeDraftEmail({
+      to: recipientEmail,
+      resume,
+      pdfBuffer: req.file.buffer,
+      pdfFilename: filename
+    });
+
+    if (!emailMeta.sent) {
+      return res.status(400).json({
+        success: false,
+        error: emailMeta.message,
+        emailStatus: emailMeta.status
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: emailMeta.message,
+      emailStatus: emailMeta.status
     });
   } catch (err) {
     next(err);

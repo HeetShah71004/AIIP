@@ -24,6 +24,9 @@ const ATSScoreCard = ({ analysis, isLoading }) => {
   }
 
   const { score, feedback, missingKeywords } = analysis;
+  const ringRadius = 30;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const ringOffset = ringCircumference - (Math.max(0, Math.min(100, score)) / 100) * ringCircumference;
 
   const getScoreColor = (s) => {
     if (s >= 80) return 'text-emerald-400';
@@ -31,13 +34,48 @@ const ATSScoreCard = ({ analysis, isLoading }) => {
     return 'text-rose-400';
   };
 
+  const recommendationItems = (feedback && feedback.length > 0)
+    ? feedback.map((item) => ({
+      text: item,
+      tone: /great|good|strong|excellent|well|solid|present|clear|optimized/i.test(item) ? 'good' : 'fix'
+    }))
+    : [
+      {
+        text: score >= 80
+          ? 'Strong ATS alignment detected. Keep this structure and keyword balance.'
+          : 'Add measurable impact and role-specific phrasing to improve ATS confidence.',
+        tone: score >= 80 ? 'good' : 'fix'
+      },
+      {
+        text: missingKeywords?.length
+          ? `Consider weaving these keywords naturally: ${missingKeywords.slice(0, 4).join(', ')}.`
+          : 'Keyword coverage looks healthy for this draft.',
+        tone: missingKeywords?.length ? 'fix' : 'good'
+      }
+    ];
+
   return (
-    <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 backdrop-blur-sm sticky top-24">
+    <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 backdrop-blur-sm">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">ATS Analysis</h3>
-        <div className="flex flex-col items-end">
-          <span className={`text-3xl font-bold ${getScoreColor(score)}`}>{score}%</span>
-          <span className="text-[10px] text-slate-400 dark:text-white/30 uppercase tracking-widest">Match Score</span>
+        <div className="relative w-[74px] h-[74px]">
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 72 72" aria-hidden="true">
+            <circle cx="36" cy="36" r={ringRadius} className="fill-none stroke-slate-200 dark:stroke-white/10" strokeWidth="7" />
+            <circle
+              cx="36"
+              cy="36"
+              r={ringRadius}
+              className="fill-none stroke-emerald-500"
+              strokeWidth="7"
+              strokeLinecap="round"
+              strokeDasharray={ringCircumference}
+              strokeDashoffset={ringOffset}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className={`text-lg font-bold leading-none ${getScoreColor(score)}`}>{score}%</span>
+            <span className="text-[9px] text-slate-400 dark:text-white/30 uppercase tracking-widest mt-0.5">Match</span>
+          </div>
         </div>
       </div>
 
@@ -45,20 +83,20 @@ const ATSScoreCard = ({ analysis, isLoading }) => {
         {/* Feedback Section */}
         <div>
           <h4 className="text-sm font-medium text-slate-600 dark:text-white/60 mb-3 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-emerald-400" />
+            <AlertCircle className="w-4 h-4 text-emerald-500" />
             Recommendations
           </h4>
           <ul className="space-y-2">
-            {feedback && feedback.length > 0 ? (
-              feedback.map((item, idx) => (
-                <li key={idx} className="text-sm text-slate-700 dark:text-white/80 flex items-start gap-2">
-                  <span className="mt-1.5 w-1 h-1 rounded-full bg-slate-300 dark:bg-white/30 shrink-0" />
-                  {item}
-                </li>
-              ))
-            ) : (
-              <li className="text-sm text-slate-500 dark:text-white/40 italic">No specific recommendations</li>
-            )}
+            {recommendationItems.map((item, idx) => (
+              <li key={idx} className="text-sm text-slate-700 dark:text-white/80 flex items-start gap-2.5">
+                <span
+                  className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
+                    item.tone === 'good' ? 'bg-emerald-500/80' : 'bg-amber-500/85'
+                  }`}
+                />
+                <span>{item.text}</span>
+              </li>
+            ))}
           </ul>
         </div>
 

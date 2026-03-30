@@ -62,6 +62,10 @@ const resumeSchema = new mongoose.Schema({
     type: String,
     default: 'classic'
   },
+  previewSectionOrder: {
+    type: [String],
+    default: ['summary', 'experience', 'projects', 'education', 'skills', 'languages']
+  },
   updatedAt: {
     type: Date,
     default: Date.now

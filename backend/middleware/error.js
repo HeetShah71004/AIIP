@@ -23,6 +23,15 @@ const errorHandler = (err, req, res, next) => {
     error = { message, statusCode: 400 };
   }
 
+  // Multer upload size/type errors
+  if (err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      error = { message: 'Uploaded file is too large. Please use a smaller PDF.', statusCode: 400 };
+    } else {
+      error = { message: err.message || 'File upload failed', statusCode: 400 };
+    }
+  }
+
   res.status(error.statusCode || 500).json({
     success: false,
     error: error.message || 'Server Error'
