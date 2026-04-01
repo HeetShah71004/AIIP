@@ -113,7 +113,37 @@ const MidnightTemplate = ({ resumeData = {}, sectionOrder = DEFAULT_SECTION_ORDE
           ))}
         </div>
       </section>
-    ) : null
+    ) : null,
+    ...(resumeData.customSections || []).reduce((acc, section) => ({
+      ...acc,
+      [section.id]: section.items?.length > 0 ? (
+        <section key={section.id}>
+          <h2 className="text-[11px] font-black uppercase tracking-widest text-emerald-400 mb-6 flex items-center justify-between border-b border-white/10 pb-2">
+            {section.title}
+            <span className="text-[10px] font-mono text-white/20">cat {section.title.toLowerCase().replace(/\s+/g, '_')}.log</span>
+          </h2>
+          <div className="space-y-8">
+            {section.items.map((item, idx) => (
+              <div key={idx} className="relative pl-6">
+                <div className="absolute w-[2px] h-full bg-white/5 left-0 top-2 after:content-[''] after:absolute after:top-0 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-emerald-500 after:rounded-full shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-tight">{item.title}</h3>
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded italic">
+                    {item.date}
+                  </span>
+                </div>
+                <div className="text-[11px] font-bold text-white/40 mb-3 uppercase tracking-wider">{item.subtitle}</div>
+                {item.description && (
+                  <p className="text-[11px] leading-relaxed text-slate-400 font-mono whitespace-pre-line bg-white/5 p-4 rounded border border-white/5">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null
+    }), {})
   };
 
   const orderedSidebarSections = sectionOrder.map((sectionKey) => sidebarSections[sectionKey]).filter(Boolean);

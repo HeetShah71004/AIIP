@@ -59,7 +59,35 @@ const ElegantTemplate = ({ resumeData = {}, sectionOrder = DEFAULT_SECTION_ORDER
           ))}
         </div>
       </section>
-    ) : null
+    ) : null,
+    ...(resumeData.customSections || []).reduce((acc, section) => ({
+      ...acc,
+      [section.id]: section.items?.length > 0 ? (
+        <section key={section.id}>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-rose-400 mb-6 flex items-center gap-3">
+            {section.title}
+            <span className="flex-1 h-[1px] bg-rose-100"></span>
+          </h2>
+          <div className="space-y-8">
+            {section.items.map((item, idx) => (
+              <div key={idx} className="relative pl-6 border-l border-rose-100">
+                <div className="absolute w-2 h-2 bg-rose-200 rounded-full -left-[4.5px] top-1"></div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">{item.title}</h3>
+                  <span className="text-[10px] font-bold text-rose-300 uppercase">{item.date}</span>
+                </div>
+                <div className="text-[11px] font-bold text-slate-400 italic mb-3 uppercase tracking-wider">{item.subtitle}</div>
+                {item.description && (
+                  <p className="text-[11px] leading-relaxed text-slate-500 font-sans whitespace-pre-line pl-4 border-l border-slate-50">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null
+    }), {})
   };
 
   const rightColumnSections = {

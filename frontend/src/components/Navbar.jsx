@@ -61,10 +61,6 @@ const Navbar = () => {
             <Layout size={17} />
             <span className="hidden sm:inline">Resume Builder</span>
           </Link>
-          <Link to="/peer-interview" className={navLinkClass('/peer-interview')}>
-            <UsersRound size={17} />
-            <span className="hidden sm:inline">Peer Interview</span>
-          </Link>
           <div className="hidden sm:block h-6 w-px bg-border/80 dark:bg-zinc-700 mx-1" />
 
           <DropdownMenu>

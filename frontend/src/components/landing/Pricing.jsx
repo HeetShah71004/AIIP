@@ -6,12 +6,12 @@ const Pricing = ({ onSignup }) => {
     {
       name: 'Free',
       price: '$0',
-      description: 'Perfect for getting started and exploring AI interviews.',
+      description: 'Perfect for getting started and exploring AI tools.',
       features: [
-        '2 Mock sessions per month',
-        'Standard AI feedback',
-        'Basic skill tracking',
-        'Community support'
+        '2 Mock AI sessions per month',
+        'Standard Performance Feedback',
+        'Basic Resume Builder access',
+        'Community Forum support'
       ],
       cta: 'Start for Free',
       popular: false
@@ -21,11 +21,12 @@ const Pricing = ({ onSignup }) => {
       price: '$19',
       description: 'The complete toolkit for serious job seekers.',
       features: [
-        'Unlimited mock sessions',
-        'Advanced AI analysis (Audio & Text)',
-        'Full skill tracking radar',
-        'Resume-based custom sessions',
-        'Priority email support'
+        'Unlimited AI & Conversational sessions',
+        'Advanced Resume Builder (6+ Templates)',
+        'Real-time ATS Optimization & Scoring',
+        'Peer-to-Peer Interview Access',
+        'Full Coding Playground access',
+        'Priority Email support'
       ],
       cta: 'Get Pro Access',
       popular: true
@@ -35,11 +36,12 @@ const Pricing = ({ onSignup }) => {
       price: 'Custom',
       description: 'For teams and organizations looking for a custom solution.',
       features: [
-        'Team analytics dashboard',
+        'Team-wide analytics dashboard',
         'Custom company question sets',
-        'Unlimited users',
-        'Dedicated account manager',
-        'SSO & Advanced Security'
+        'Unlimited users & sessions',
+        'Dedicated Account Manager',
+        'Advanced Security (SSO/Audit)',
+        'Early access to new features'
       ],
       cta: 'Contact Sales',
       popular: false

@@ -34,7 +34,8 @@ import {
   FileText,
   Code,
   Eye,
-  X
+  X,
+  Pencil
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ATSScoreCard from '../components/ATSScoreCard';
@@ -111,13 +112,11 @@ const FORM_SECTION_NAV_ITEMS = [
   { key: 'languages', label: 'Languages', subtitle: 'Spoken language proficiency' }
 ];
 
-const normalizeSectionOrder = (incomingOrder) => {
-  if (!Array.isArray(incomingOrder)) return PREVIEW_SECTION_KEYS;
-
-  const deduped = [...new Set(incomingOrder)].filter((key) => PREVIEW_SECTION_KEYS.includes(key));
-  const missing = PREVIEW_SECTION_KEYS.filter((key) => !deduped.includes(key));
-
-  return [...deduped, ...missing];
+const normalizeSectionOrder = (incomingOrder, customSections = []) => {
+  const customIds = customSections.map(s => s.id);
+  const validKeys = [...PREVIEW_SECTION_KEYS, ...customIds];
+  if (!Array.isArray(incomingOrder)) return validKeys;
+  return [...new Set(incomingOrder)].filter((key) => validKeys.includes(key));
 };
 
 const ResumeBuilder = () => {
@@ -138,7 +137,8 @@ const ResumeBuilder = () => {
     education: [],
     skills: [],
     languages: [],
-    projects: []
+    projects: [],
+    customSections: []
   });
 
   const [analysis, setAnalysis] = useState(null);
@@ -150,7 +150,7 @@ const ResumeBuilder = () => {
   const [isThemeExplorerOpen, setIsThemeExplorerOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('classic');
   const [previewSectionOrder, setPreviewSectionOrder] = useState(PREVIEW_SECTION_KEYS);
-  const [previewOrderSelection, setPreviewOrderSelection] = useState([]);
+  const [previewOrderSelection, setPreviewOrderSelection] = useState(PREVIEW_SECTION_KEYS);
   const [importedFileName, setImportedFileName] = useState('');
   const [showImportFilePulse, setShowImportFilePulse] = useState(false);
   const [activeFormSection, setActiveFormSection] = useState('personalInfo');
@@ -215,7 +215,10 @@ const ResumeBuilder = () => {
           const incomingTemplate = response.data.data.selectedTemplate;
           setSelectedTemplate(LOCAL_TEMPLATE_SLUGS.has(incomingTemplate) ? incomingTemplate : 'classic');
         }
-        setPreviewSectionOrder(normalizeSectionOrder(response.data.data.previewSectionOrder));
+        setPreviewSectionOrder(normalizeSectionOrder(response.data.data.previewSectionOrder, response.data.data.customSections));
+        if (response.data.data.previewOrderSelection) {
+          setPreviewOrderSelection(response.data.data.previewOrderSelection);
+        }
       }
     } catch (error) {
       console.error('Error fetching resume:', error);
@@ -317,6 +320,75 @@ const ResumeBuilder = () => {
     setDragOverProjectIndex(null);
   };
 
+  const addCustomSection = () => {
+    const newSection = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      title: 'New Section',
+      items: [{ title: '', subtitle: '', date: '', description: '' }]
+    };
+    setResumeData(prev => ({
+      ...prev,
+      customSections: [...(prev.customSections || []), newSection]
+    }));
+    
+    // Also add to preview selection by default
+    setPreviewOrderSelection(prev => [...prev, newSection.id]);
+    setPreviewSectionOrder(prev => [...prev, newSection.id]);
+  };
+
+  const removeCustomSection = (sectionId) => {
+    setResumeData(prev => ({
+      ...prev,
+      customSections: prev.customSections.filter(s => s.id !== sectionId)
+    }));
+    setPreviewOrderSelection(prev => prev.filter(id => id !== sectionId));
+    setPreviewSectionOrder(prev => prev.filter(id => id !== sectionId));
+  };
+
+  const updateCustomSectionTitle = (sectionId, title) => {
+    setResumeData(prev => ({
+      ...prev,
+      customSections: prev.customSections.map(s => 
+        s.id === sectionId ? { ...s, title } : s
+      )
+    }));
+  };
+
+  const addCustomItem = (sectionId) => {
+    setResumeData(prev => ({
+      ...prev,
+      customSections: prev.customSections.map(s => 
+        s.id === sectionId 
+          ? { ...s, items: [...s.items, { title: '', subtitle: '', date: '', description: '' }] }
+          : s
+      )
+    }));
+  };
+
+  const removeCustomItem = (sectionId, itemIndex) => {
+    setResumeData(prev => ({
+      ...prev,
+      customSections: prev.customSections.map(s => {
+        if (s.id !== sectionId) return s;
+        const nextItems = [...s.items];
+        nextItems.splice(itemIndex, 1);
+        return { ...s, items: nextItems };
+      })
+    }));
+  };
+
+  const updateCustomItem = (sectionId, itemIndex, field, value) => {
+    setResumeData(prev => ({
+      ...prev,
+      customSections: prev.customSections.map(s => {
+        if (s.id !== sectionId) return s;
+        const nextItems = [...s.items];
+        nextItems[itemIndex] = { ...nextItems[itemIndex], [field]: value };
+        return { ...s, items: nextItems };
+      })
+    }));
+  };
+
   const handleRewrite = async (section, index = null) => {
     try {
       setIsRewriting(index !== null ? `${section}-${index}` : section);
@@ -360,7 +432,8 @@ const ResumeBuilder = () => {
       await axios.post('/resume', {
         ...resumeData,
         selectedTemplate,
-        previewSectionOrder
+        previewSectionOrder,
+        previewOrderSelection
       });
 
       let pdfBlob = null;
@@ -584,8 +657,7 @@ const ResumeBuilder = () => {
         ? [...prevSelection, sectionKey]
         : prevSelection.filter((key) => key !== sectionKey);
 
-      const remaining = PREVIEW_SECTION_KEYS.filter((key) => !nextSelection.includes(key));
-      setPreviewSectionOrder([...nextSelection, ...remaining]);
+      setPreviewSectionOrder(nextSelection);
 
       return nextSelection;
     });
@@ -598,6 +670,15 @@ const ResumeBuilder = () => {
     setActiveFormSection(sectionKey);
     sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  const navigatorItems = [
+    ...FORM_SECTION_NAV_ITEMS,
+    ...(resumeData.customSections || []).map(s => ({
+      key: s.id,
+      label: s.title,
+      subtitle: 'Custom manual section'
+    }))
+  ];
 
   const sectionCompletionStatus = {
     personalInfo: Boolean(
@@ -616,17 +697,27 @@ const ResumeBuilder = () => {
       && resumeData.projects.length > 0
       && resumeData.projects.every((item) => item.name?.trim() && item.description?.trim()),
     skills: Array.isArray(resumeData.skills) && resumeData.skills.length >= 3,
-    languages: Array.isArray(resumeData.languages) && resumeData.languages.length >= 1
+    languages: Array.isArray(resumeData.languages) && resumeData.languages.length >= 1,
+    ...(resumeData.customSections || []).reduce((acc, s) => ({
+      ...acc,
+      [s.id]: s.items.some(item => item.title?.trim() || item.description?.trim())
+    }), {})
   };
 
-  const completionCount = FORM_SECTION_NAV_ITEMS.filter((item) => sectionCompletionStatus[item.key]).length;
-  const completionPercent = Math.round((completionCount / FORM_SECTION_NAV_ITEMS.length) * 100);
-  const firstIncompleteIndex = FORM_SECTION_NAV_ITEMS.findIndex((item) => !sectionCompletionStatus[item.key]);
+  const completionCount = navigatorItems.filter((item) => sectionCompletionStatus[item.key]).length;
+  const completionPercent = Math.round((completionCount / navigatorItems.length) * 100);
+  const firstIncompleteIndex = navigatorItems.findIndex((item) => !sectionCompletionStatus[item.key]);
 
-  const activeFormSectionIndex = FORM_SECTION_NAV_ITEMS.findIndex((item) => item.key === activeFormSection);
-  const navigatorStartIndex = activeFormSectionIndex <= 0 ? 0 : activeFormSectionIndex - 1;
-  const navigatorEndIndex = Math.min(FORM_SECTION_NAV_ITEMS.length, navigatorStartIndex + 3);
-  const visibleNavigatorItems = FORM_SECTION_NAV_ITEMS.slice(navigatorStartIndex, navigatorEndIndex);
+  const activeFormSectionIndex = navigatorItems.findIndex((item) => item.key === activeFormSection);
+  const navigatorStartIndex = activeFormSectionIndex <= 1 ? 0 : activeFormSectionIndex - 1;
+  const navigatorEndIndex = Math.min(navigatorItems.length, navigatorStartIndex + 4);
+  const visibleNavigatorItems = navigatorItems.slice(navigatorStartIndex, navigatorEndIndex);
+
+  const dynamicPreviewKeys = [...PREVIEW_SECTION_KEYS, ...(resumeData.customSections || []).map(s => s.id)];
+  const dynamicPreviewLabels = {
+    ...PREVIEW_SECTION_LABELS,
+    ...(resumeData.customSections || []).reduce((acc, s) => ({ ...acc, [s.id]: s.title }), {})
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0a0a0a] pt-12 pb-24 px-4 md:px-8">
@@ -1336,6 +1427,131 @@ const ResumeBuilder = () => {
               </div>
             </section>
 
+            {/* Custom Sections */}
+            {(resumeData.customSections || []).map((section) => (
+              <section
+                key={section.id}
+                data-section-key={section.id}
+                ref={(el) => {
+                  formSectionRefs.current[section.id] = el;
+                }}
+                className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-8 backdrop-blur-sm"
+              >
+                <div className="flex items-center justify-between gap-3 mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10">
+                      <ScrollText className="w-5 h-5 text-teal-400" />
+                    </div>
+                    <div className="relative group/title flex items-center">
+                      <input
+                        type="text"
+                        value={section.title}
+                        onChange={(e) => updateCustomSectionTitle(section.id, e.target.value)}
+                        className="text-xl font-semibold bg-transparent border-b border-transparent hover:border-slate-200 focus:border-teal-500/50 focus:ring-0 rounded-none px-1 py-0.5 text-slate-900 dark:text-white transition-all cursor-text min-w-[150px]"
+                        placeholder="Section Title"
+                      />
+                      <Pencil className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover/title:opacity-100 transition-opacity ml-2" />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeCustomSection(section.id)}
+                    className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                    title="Remove Section"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-8">
+                  {section.items.map((item, idx) => (
+                    <div key={idx} className="relative p-6 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 group">
+                      <div className="absolute -left-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <GripVertical className="w-5 h-5 text-slate-400" />
+                      </div>
+                      
+                      <div className="flex justify-between items-start mb-6">
+                        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-500 text-slate-900 dark:text-white text-xs font-bold shadow-lg shadow-teal-500/20">
+                          {idx + 1}
+                        </span>
+                        <button
+                          onClick={() => removeCustomItem(section.id, idx)}
+                          className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-bold text-slate-400 dark:text-white/30 uppercase tracking-widest ml-1">Title</label>
+                          <input
+                            type="text"
+                            value={item.title}
+                            onChange={(e) => updateCustomItem(section.id, idx, 'title', e.target.value)}
+                            placeholder="e.g. Award Name / Certification"
+                            className="w-full bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white focus:outline-none focus:border-teal-500/50 transition-all font-medium"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-bold text-slate-400 dark:text-white/30 uppercase tracking-widest ml-1">Subtitle / Organization</label>
+                          <input
+                            type="text"
+                            value={item.subtitle}
+                            onChange={(e) => updateCustomItem(section.id, idx, 'subtitle', e.target.value)}
+                            placeholder="e.g. Issuer / Event"
+                            className="w-full bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white focus:outline-none focus:border-teal-500/50 transition-all font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 mb-6">
+                        <label className="text-[11px] font-bold text-slate-400 dark:text-white/30 uppercase tracking-widest ml-1">Date</label>
+                        <input
+                          type="text"
+                          value={item.date}
+                          onChange={(e) => updateCustomItem(section.id, idx, 'date', e.target.value)}
+                          placeholder="e.g. 2023 or Jan 2023"
+                          className="w-32 bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white focus:outline-none focus:border-teal-500/50 transition-all font-medium"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold text-slate-400 dark:text-white/30 uppercase tracking-widest ml-1">Description</label>
+                        <textarea
+                          rows={3}
+                          value={item.description}
+                          onChange={(e) => updateCustomItem(section.id, idx, 'description', e.target.value)}
+                          placeholder="Describe the details..."
+                          className="w-full bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white focus:outline-none focus:border-teal-500/50 transition-all text-sm font-medium leading-relaxed resize-none"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={() => addCustomItem(section.id)}
+                    className="w-full py-4 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl text-slate-400 dark:text-white/30 hover:border-teal-500/50 hover:text-teal-500 hover:bg-teal-500/5 transition-all flex items-center justify-center gap-2 group"
+                  >
+                    <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                    <span className="font-semibold text-sm italic opacity-80 uppercase tracking-widest">
+                      Add to {section.title}
+                    </span>
+                  </button>
+                </div>
+              </section>
+            ))}
+
+            <button
+              onClick={addCustomSection}
+              className="w-full py-6 border-2 border-dashed border-teal-500/30 rounded-2xl text-teal-600 dark:text-teal-400 hover:border-teal-500 hover:bg-teal-500/5 transition-all flex flex-col items-center justify-center gap-2 group shadow-lg shadow-teal-500/5"
+            >
+              <div className="w-12 h-12 rounded-full bg-teal-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform" />
+              </div>
+              <span className="text-lg font-bold">Add Custom Section</span>
+              <p className="text-xs opacity-60">Add things like Certifications, Awards, or Volunteering</p>
+            </button>
+
           </div>
 
           {/* Sidebar Area */}
@@ -1346,7 +1562,7 @@ const ResumeBuilder = () => {
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">Section Navigator</p>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-white/50">
-                      {completionCount}/{FORM_SECTION_NAV_ITEMS.length} complete
+                      {completionCount}/{navigatorItems.length} complete
                     </span>
                   </div>
                   <div className="h-2 w-full bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden border border-slate-200 dark:border-white/10">
@@ -1484,7 +1700,7 @@ const ResumeBuilder = () => {
                 Select sections in the order you want them to appear.
               </p>
               <div className="flex flex-wrap gap-2">
-                {PREVIEW_SECTION_KEYS.map((sectionKey) => {
+                {dynamicPreviewKeys.map((sectionKey) => {
                   const selectionIndex = previewOrderSelection.indexOf(sectionKey);
                   const isSelected = selectionIndex > -1;
 
@@ -1504,7 +1720,7 @@ const ResumeBuilder = () => {
                         onChange={(e) => handlePreviewOrderCheckbox(sectionKey, e.target.checked)}
                       />
                       <span className="text-xs font-medium text-slate-700 dark:text-white/80">
-                        {PREVIEW_SECTION_LABELS[sectionKey]}
+                        {dynamicPreviewLabels[sectionKey]}
                       </span>
                       {isSelected && (
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">

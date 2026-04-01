@@ -88,7 +88,31 @@ const CreativeTemplate = ({ resumeData = {}, sectionOrder = DEFAULT_SECTION_ORDE
           ))}
         </div>
       </section>
-    ) : null
+    ) : null,
+    ...(resumeData.customSections || []).reduce((acc, section) => ({
+      ...acc,
+      [section.id]: section.items?.length > 0 ? (
+        <section key={section.id}>
+          <h2 className="text-lg font-bold text-violet-700 mb-6 border-l-4 border-violet-700 pl-4 uppercase tracking-wider">{section.title}</h2>
+          <div className="space-y-6 pl-5">
+            {section.items.map((item, idx) => (
+              <div key={idx} className="relative">
+                <div className="flex justify-between items-start mb-1">
+                  <h3 className="text-sm font-bold text-slate-900 leading-tight">{item.title}</h3>
+                  <span className="text-[10px] font-bold text-violet-500 uppercase shrink-0">{item.date}</span>
+                </div>
+                <div className="text-xs font-semibold text-slate-500 mb-3">{item.subtitle}</div>
+                {item.description && (
+                  <p className="text-[11px] leading-relaxed text-slate-600 whitespace-pre-line border-l-2 border-slate-100 pl-4">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null
+    }), {})
   };
 
   const orderedSidebarSections = sectionOrder.map((sectionKey) => sidebarSections[sectionKey]).filter(Boolean);

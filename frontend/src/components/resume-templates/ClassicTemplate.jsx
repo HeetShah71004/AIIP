@@ -76,7 +76,27 @@ const ClassicTemplate = ({ resumeData, sectionOrder = DEFAULT_SECTION_ORDER }) =
           {resumeData.languages.join(' • ')}
         </p>
       </section>
-    ) : null
+    ) : null,
+    ...(resumeData.customSections || []).reduce((acc, section) => ({
+      ...acc,
+      [section.id]: section.items?.length > 0 ? (
+        <section key={section.id}>
+          <h2 className="text-sm font-bold uppercase border-b border-slate-300 mb-4 text-slate-900">{section.title}</h2>
+          <div className="space-y-4">
+            {section.items.map((item, idx) => (
+              <div key={idx} className="relative">
+                <div className="flex justify-between items-baseline mb-1">
+                  <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase">{item.date}</span>
+                </div>
+                <div className="text-[11px] font-semibold text-slate-600 italic mb-1">{item.subtitle}</div>
+                {item.description && <p className="text-[11px] leading-relaxed text-slate-700 whitespace-pre-line">{item.description}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null
+    }), {})
   };
 
   const orderedSections = sectionOrder

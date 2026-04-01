@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Trophy, Target, Zap, Play, ChevronRight, Trash2, Building2, Code2, Flame, X, ArrowUpDown, History, Star } from 'lucide-react';
+import { Trophy, Target, Zap, Play, ChevronRight, Trash2, Building2, Code2, Flame, X, ArrowUpDown, History, Star, UsersRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
 import {
@@ -114,7 +114,7 @@ const Dashboard = () => {
             <Building2 size={20} /> Targeted Practice
           </Button>
           <Button variant="outline" onClick={() => navigate('/peer-interview')} className="gap-2">
-            <ArrowUpDown size={20} /> Peer Interview
+            <UsersRound size={20} /> Peer Interview
           </Button>
           <Button onClick={() => navigate('/upload')} className="gap-2">
             <Play size={20} fill="currentColor" /> Quick Start

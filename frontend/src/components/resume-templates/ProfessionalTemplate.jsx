@@ -100,7 +100,35 @@ const ProfessionalTemplate = ({ resumeData, sectionOrder = DEFAULT_SECTION_ORDER
           {resumeData.languages.join(' • ')}
         </p>
       </section>
-    ) : null
+    ) : null,
+    ...(resumeData.customSections || []).reduce((acc, section) => ({
+      ...acc,
+      [section.id]: section.items?.length > 0 ? (
+        <section key={section.id}>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-slate-900 border-b-2 border-teal-500 pb-2 mb-4">
+            {section.title}
+          </h2>
+          <div className="space-y-5">
+            {section.items.map((item, idx) => (
+              <div key={idx} className="relative">
+                <div className="flex justify-between items-baseline mb-1">
+                  <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase bg-slate-100 px-2 py-1 rounded">
+                    {item.date}
+                  </span>
+                </div>
+                <div className="text-[12px] font-bold text-teal-600 mb-2">{item.subtitle}</div>
+                {item.description && (
+                  <p className="text-[11px] leading-relaxed text-slate-700 whitespace-pre-line pl-2 border-l-2 border-slate-200">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null
+    }), {})
   };
 
   const orderedSections = sectionOrder.map((sectionKey) => sections[sectionKey]).filter(Boolean);

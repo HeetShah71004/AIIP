@@ -103,7 +103,31 @@ const ModernTemplate = ({ resumeData, sectionOrder = DEFAULT_SECTION_ORDER }) =>
           ))}
         </div>
       </section>
-    ) : null
+    ) : null,
+    ...(resumeData.customSections || []).reduce((acc, section) => ({
+      ...acc,
+      [section.id]: section.items?.length > 0 ? (
+        <section key={section.id}>
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-teal-600 mb-4 flex items-center gap-2">
+            <span className="w-4 h-4 rounded bg-teal-100 text-teal-600 flex items-center justify-center text-[10px]">❖</span>
+            {section.title}
+          </h2>
+          <div className="space-y-5">
+            {section.items.map((item, idx) => (
+              <div key={idx} className="relative pl-4 border-l-2 border-slate-100">
+                <div className="absolute w-2 h-2 bg-slate-300 rounded-full -left-[5px] top-1"></div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
+                  <span className="text-[10px] font-medium text-slate-400 uppercase">{item.date}</span>
+                </div>
+                <div className="text-[11px] font-semibold text-slate-600 italic mb-1.5">{item.subtitle}</div>
+                {item.description && <p className="text-[11px] leading-relaxed text-slate-600 whitespace-pre-line">{item.description}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null
+    }), {})
   };
 
   const orderedSidebarSections = sectionOrder.map((sectionKey) => sidebarSections[sectionKey]).filter(Boolean);
