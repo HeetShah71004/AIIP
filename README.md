@@ -8,10 +8,8 @@
 
 ### 🎙️ AI-Powered Mock Interviews
 - **Real-Time Streaming**: Experience fluid, low-latency interactions powered by **Server-Sent Events (SSE)** for instant AI feedback and question generation.
+- **Peer-to-Peer Interview Matching**: connect with other candidates for live mock sessions to improve communication and behavioral skills.
 - **Infinite Social Proof Marquee**: A sleek, auto-scrolling display of top companies utilizing high-fidelity fade masks and interactive hover states.
-- **Role-Specific Scenarios**: Tailored prep for Software Engineer (Frontend, Backend, Full Stack), Data Scientist, and Product Manager roles.
-- **Company-Specific Tracks**: Get curated questions based on the interview patterns of tech giants like Google, Amazon, Meta, and Netflix.
-- **Hybrid Transcription**: High-accuracy speech-to-text using **Deepgram Nova-2** with intelligent browser-based fallbacks.
 
 ### 📄 Intelligent Resume Alignment
 - **Resume Parsing**: Strategic analysis of PDF/DOCX resumes to generate questions that probe your specific experience and projects.
@@ -19,6 +17,7 @@
 
 ### 🧩 Smart Resume Builder
 - **Multi-Template Resume Engine**: Build and preview resumes with Classic, Modern, Professional, Creative, Elegant, and Midnight templates.
+- **Unlimited Custom Sections**: Add manual sections for Certifications, Awards, volunteering, or anything else you need.
 - **Interactive Section Sequencing**: Control preview section order from the modal using checkbox-based sequence selection while keeping core identity blocks stable.
 - **Draft Persistence**: Save and restore both selected template and preview section order across sessions.
 - **ATS + Editing Workspace**: Scroll-friendly right sidebar with section navigator and ATS analysis for long-form resume editing.
