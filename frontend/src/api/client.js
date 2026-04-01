@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api/v1';
+
+// Production safety check
+if (import.meta.env.PROD && baseURL.includes('localhost')) {
+  console.warn('⚠️ PROD ERROR: Backend URL is still pointing to localhost. Check Vercel environment variables.');
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api/v1',
+  baseURL,
   headers: {
     'Content-Type': 'application/json'
   }

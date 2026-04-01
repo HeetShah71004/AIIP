@@ -14,7 +14,20 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(null);
   const { login, googleLogin } = useAuth();
+
+  React.useEffect(() => {
+    let timer;
+    if (loading) {
+      timer = setTimeout(() => {
+        setLoadingMessage('Waking up server...');
+      }, 4000);
+    } else {
+      setLoadingMessage(null);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,7 +117,7 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
           className="w-full h-13 text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 transition-all duration-300 rounded-xl mt-4 shadow-xl active:scale-[0.98]" 
           disabled={loading}
         >
-          {loading ? <LoadingSpinner size={20} message={null} /> : 'Sign In'}
+          {loading ? <LoadingSpinner size={20} message={loadingMessage} /> : 'Sign In'}
         </Button>
       </form>
 
