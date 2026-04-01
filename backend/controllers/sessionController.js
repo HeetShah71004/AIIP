@@ -8,6 +8,44 @@ import {
   generateFollowUpQuestion
 } from '../services/aiService.js';
 import { processAnswerDifficulty } from '../services/adaptiveDifficultyService.js';
+import { sendPeerInterviewReminderEmail } from '../services/emailService.js';
+
+const buildMeetingUrl = (sessionId) => {
+  return `https://meet.jit.si/interv-ai-peer-${sessionId}`;
+};
+
+const isValidDate = (value) => {
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime());
+};
+
+const toPositiveDuration = (durationMinutes, fallback = 45) => {
+  const parsed = Number(durationMinutes);
+  if (Number.isNaN(parsed) || parsed <= 0) return fallback;
+  return Math.min(parsed, 180);
+};
+
+const normalize = (value) => String(value || '').trim().toLowerCase();
+
+const calculateMatchScore = (sessionDoc, requestedTopic, requestedTimezone) => {
+  const slot = sessionDoc.peerInterview || {};
+  let score = 0;
+
+  if (requestedTimezone && normalize(slot.timezone) === normalize(requestedTimezone)) {
+    score += 30;
+  }
+
+  if (requestedTopic && normalize(slot.topic).includes(normalize(requestedTopic))) {
+    score += 40;
+  }
+
+  const minutesUntilStart = Math.max(0, Math.floor((new Date(slot.startAt) - new Date()) / 60000));
+  if (minutesUntilStart >= 60 && minutesUntilStart <= 1440) {
+    score += 20;
+  }
+
+  return score;
+};
 
 // Start a new interview session
 export const startSession = async (req, res) => {
@@ -483,6 +521,415 @@ export const submitAnswerStream = async (req, res) => {
     console.error('Streaming error:', error);
     sendEvent('error', { message: error.message });
     res.end();
+  }
+};
+
+export const createPeerAvailability = async (req, res) => {
+  try {
+    const {
+      role,
+      level,
+      topic,
+      startAt,
+      durationMinutes = 45,
+      timezone = 'UTC',
+      meetingProvider = 'internal'
+    } = req.body;
+
+    if (!role || !level || !startAt) {
+      return res.status(400).json({ success: false, message: 'role, level and startAt are required.' });
+    }
+
+    if (!isValidDate(startAt)) {
+      return res.status(400).json({ success: false, message: 'Invalid startAt value.' });
+    }
+
+    const start = new Date(startAt);
+    if (start <= new Date()) {
+      return res.status(400).json({ success: false, message: 'Availability slot must be in the future.' });
+    }
+
+    const validDuration = toPositiveDuration(durationMinutes);
+    const end = new Date(start.getTime() + validDuration * 60000);
+
+    const slot = await Session.create({
+      user: req.user.id,
+      sessionType: 'peer',
+      status: 'open',
+      peerInterview: {
+        hostUser: req.user.id,
+        role,
+        level,
+        topic,
+        timezone,
+        startAt: start,
+        endAt: end,
+        meetingProvider,
+        meetingJoinUrl: buildMeetingUrl(Date.now())
+      }
+    });
+
+    // Keep the join URL deterministic and tied to created id.
+    slot.peerInterview.meetingJoinUrl = buildMeetingUrl(slot._id);
+    await slot.save();
+
+    res.status(201).json({ success: true, data: slot });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const searchPeerAvailability = async (req, res) => {
+  try {
+    const { role, level, topic, timezone } = req.query;
+    const now = new Date();
+    const query = {
+      sessionType: 'peer',
+      status: 'open',
+      'peerInterview.startAt': { $gte: now },
+      'peerInterview.hostUser': { $ne: req.user.id },
+      'peerInterview.guestUser': { $exists: false }
+    };
+
+    if (role) query['peerInterview.role'] = new RegExp(String(role), 'i');
+    if (level) query['peerInterview.level'] = new RegExp(String(level), 'i');
+    if (topic) query['peerInterview.topic'] = new RegExp(String(topic), 'i');
+
+    const slots = await Session.find(query)
+      .sort({ 'peerInterview.startAt': 1 })
+      .limit(30)
+      .populate('peerInterview.hostUser', 'name email avatar');
+
+    const ranked = slots
+      .map((slot) => ({
+        ...slot.toObject(),
+        matchScore: calculateMatchScore(slot, topic, timezone)
+      }))
+      .sort((a, b) => b.matchScore - a.matchScore || new Date(a.peerInterview.startAt) - new Date(b.peerInterview.startAt));
+
+    res.status(200).json({ success: true, count: ranked.length, data: ranked });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const autoMatchPeer = async (req, res) => {
+  try {
+    const { role, level, topic, timezone } = req.body;
+    const query = {
+      sessionType: 'peer',
+      status: 'open',
+      'peerInterview.startAt': { $gte: new Date() },
+      'peerInterview.hostUser': { $ne: req.user.id },
+      'peerInterview.guestUser': { $exists: false }
+    };
+
+    if (role) query['peerInterview.role'] = new RegExp(String(role), 'i');
+    if (level) query['peerInterview.level'] = new RegExp(String(level), 'i');
+    if (topic) query['peerInterview.topic'] = new RegExp(String(topic), 'i');
+
+    const candidates = await Session.find(query)
+      .limit(30)
+      .populate('peerInterview.hostUser', 'name email avatar');
+
+    if (candidates.length === 0) {
+      return res.status(200).json({ success: true, data: null, message: 'No peer slots found right now.' });
+    }
+
+    const best = candidates
+      .map((slot) => ({ slot, score: calculateMatchScore(slot, topic, timezone) }))
+      .sort((a, b) => b.score - a.score || new Date(a.slot.peerInterview.startAt) - new Date(b.slot.peerInterview.startAt))[0];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...best.slot.toObject(),
+        matchScore: best.score
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const bookPeerSession = async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ success: false, message: 'sessionId is required.' });
+    }
+
+    const target = await Session.findById(sessionId);
+    if (!target || target.sessionType !== 'peer') {
+      return res.status(404).json({ success: false, message: 'Peer slot not found.' });
+    }
+
+    if (String(target.peerInterview?.hostUser) === String(req.user.id)) {
+      return res.status(400).json({ success: false, message: 'You cannot book your own availability slot.' });
+    }
+
+    if (target.status !== 'open') {
+      return res.status(409).json({ success: false, message: 'This slot is no longer available.' });
+    }
+
+    const conflict = await Session.findOne({
+      sessionType: 'peer',
+      status: 'booked',
+      $or: [
+        { 'peerInterview.hostUser': req.user.id },
+        { 'peerInterview.guestUser': req.user.id }
+      ],
+      'peerInterview.startAt': { $lt: target.peerInterview.endAt },
+      'peerInterview.endAt': { $gt: target.peerInterview.startAt }
+    });
+
+    if (conflict) {
+      return res.status(409).json({ success: false, message: 'You already have a booked peer interview at this time.' });
+    }
+
+    const booked = await Session.findOneAndUpdate(
+      { _id: sessionId, sessionType: 'peer', status: 'open' },
+      {
+        $set: {
+          status: 'booked',
+          'peerInterview.guestUser': req.user.id,
+          'peerInterview.meetingJoinUrl': target.peerInterview?.meetingJoinUrl || buildMeetingUrl(sessionId)
+        }
+      },
+      { new: true }
+    )
+      .populate('peerInterview.hostUser', 'name email avatar')
+      .populate('peerInterview.guestUser', 'name email avatar');
+
+    if (!booked) {
+      return res.status(409).json({ success: false, message: 'Slot was taken by another user.' });
+    }
+
+    res.status(200).json({ success: true, data: booked });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getUpcomingPeerSessions = async (req, res) => {
+  try {
+    const sessions = await Session.find({
+      sessionType: 'peer',
+      status: { $in: ['open', 'booked'] },
+      'peerInterview.startAt': { $gte: new Date() },
+      $or: [
+        { 'peerInterview.hostUser': req.user.id },
+        { 'peerInterview.guestUser': req.user.id }
+      ]
+    })
+      .sort({ 'peerInterview.startAt': 1 })
+      .populate('peerInterview.hostUser', 'name email avatar')
+      .populate('peerInterview.guestUser', 'name email avatar');
+
+    res.status(200).json({ success: true, count: sessions.length, data: sessions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const reschedulePeerSession = async (req, res) => {
+  try {
+    const { startAt, durationMinutes } = req.body;
+    if (!startAt || !isValidDate(startAt)) {
+      return res.status(400).json({ success: false, message: 'Valid startAt is required.' });
+    }
+
+    const session = await Session.findById(req.params.id);
+    if (!session || session.sessionType !== 'peer') {
+      return res.status(404).json({ success: false, message: 'Peer session not found.' });
+    }
+
+    const isHost = String(session.peerInterview?.hostUser) === String(req.user.id);
+    const isGuest = String(session.peerInterview?.guestUser) === String(req.user.id);
+    if (!isHost && !isGuest) {
+      return res.status(403).json({ success: false, message: 'Not authorized to reschedule this session.' });
+    }
+
+    const start = new Date(startAt);
+    if (start <= new Date()) {
+      return res.status(400).json({ success: false, message: 'Rescheduled time must be in the future.' });
+    }
+
+    const existingDurationMs = Math.max(
+      15 * 60000,
+      new Date(session.peerInterview?.endAt || start).getTime() - new Date(session.peerInterview?.startAt || start).getTime()
+    );
+    const nextDurationMs = durationMinutes
+      ? toPositiveDuration(durationMinutes) * 60000
+      : existingDurationMs;
+
+    session.peerInterview.startAt = start;
+    session.peerInterview.endAt = new Date(start.getTime() + nextDurationMs);
+    session.peerInterview.reminderState.oneDaySent = false;
+    session.peerInterview.reminderState.oneHourSent = false;
+    await session.save();
+
+    const updated = await Session.findById(session._id)
+      .populate('peerInterview.hostUser', 'name email avatar')
+      .populate('peerInterview.guestUser', 'name email avatar');
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const cancelPeerSession = async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session || session.sessionType !== 'peer') {
+      return res.status(404).json({ success: false, message: 'Peer session not found.' });
+    }
+
+    const isHost = String(session.peerInterview?.hostUser) === String(req.user.id);
+    const isGuest = String(session.peerInterview?.guestUser) === String(req.user.id);
+    if (!isHost && !isGuest) {
+      return res.status(403).json({ success: false, message: 'Not authorized to cancel this session.' });
+    }
+
+    session.status = 'cancelled';
+    await session.save();
+
+    res.status(200).json({ success: true, message: 'Peer session cancelled.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const handlePeerCalendarWebhook = async (req, res) => {
+  try {
+    const webhookSecret = process.env.CALENDAR_WEBHOOK_SECRET;
+    if (webhookSecret && req.headers['x-calendar-webhook-secret'] !== webhookSecret) {
+      return res.status(401).json({ success: false, message: 'Invalid webhook secret.' });
+    }
+
+    const { calendarEventId, status, startAt, endAt, meetingJoinUrl } = req.body;
+    if (!calendarEventId) {
+      return res.status(400).json({ success: false, message: 'calendarEventId is required.' });
+    }
+
+    const session = await Session.findOne({ sessionType: 'peer', 'peerInterview.calendarEventId': calendarEventId });
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Peer session not found for event.' });
+    }
+
+    if (meetingJoinUrl) session.peerInterview.meetingJoinUrl = meetingJoinUrl;
+    if (startAt && isValidDate(startAt)) session.peerInterview.startAt = new Date(startAt);
+    if (endAt && isValidDate(endAt)) session.peerInterview.endAt = new Date(endAt);
+    if (status && ['open', 'matched', 'booked', 'cancelled', 'completed'].includes(status)) {
+      session.status = status;
+      if (status === 'completed' && !session.completedAt) session.completedAt = new Date();
+    }
+
+    await session.save();
+
+    res.status(200).json({ success: true, message: 'Webhook processed.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const dispatchPeerReminders = async (req, res) => {
+  try {
+    const now = new Date();
+    const in24h = new Date(now.getTime() + 24 * 60 * 60000);
+
+    const sessions = await Session.find({
+      sessionType: 'peer',
+      status: 'booked',
+      'peerInterview.startAt': { $gte: now, $lte: in24h },
+      $or: [
+        { 'peerInterview.reminderState.oneDaySent': false },
+        { 'peerInterview.reminderState.oneHourSent': false }
+      ]
+    })
+      .populate('peerInterview.hostUser', 'name email')
+      .populate('peerInterview.guestUser', 'name email');
+
+    let remindersSent = 0;
+    let sessionsUpdated = 0;
+
+    for (const session of sessions) {
+      const start = new Date(session.peerInterview.startAt);
+      const minutesUntil = Math.floor((start.getTime() - now.getTime()) / 60000);
+      if (minutesUntil <= 0) continue;
+
+      const shouldSendOneHour = minutesUntil <= 60 && !session.peerInterview.reminderState?.oneHourSent;
+      const shouldSendOneDay = minutesUntil > 60 && minutesUntil <= 24 * 60 && !session.peerInterview.reminderState?.oneDaySent;
+
+      if (!shouldSendOneHour && !shouldSendOneDay) continue;
+
+      const host = session.peerInterview.hostUser;
+      const guest = session.peerInterview.guestUser;
+      const role = session.peerInterview.role;
+      const level = session.peerInterview.level;
+      const topic = session.peerInterview.topic;
+      const timezone = session.peerInterview.timezone;
+      const joinUrl = session.peerInterview.meetingJoinUrl || buildMeetingUrl(session._id);
+      const readableStart = start.toLocaleString();
+
+      const promises = [];
+      if (host?.email) {
+        promises.push(sendPeerInterviewReminderEmail({
+          to: host.email,
+          recipientName: host.name,
+          partnerName: guest?.name,
+          role,
+          level,
+          topic,
+          startAt: readableStart,
+          timezone,
+          joinUrl
+        }));
+      }
+      if (guest?.email) {
+        promises.push(sendPeerInterviewReminderEmail({
+          to: guest.email,
+          recipientName: guest.name,
+          partnerName: host?.name,
+          role,
+          level,
+          topic,
+          startAt: readableStart,
+          timezone,
+          joinUrl
+        }));
+      }
+
+      const results = await Promise.all(promises);
+      remindersSent += results.filter((result) => result?.sent).length;
+
+      if (!session.peerInterview.reminderState) {
+        session.peerInterview.reminderState = {
+          oneDaySent: false,
+          oneHourSent: false,
+          lastSentAt: null
+        };
+      }
+
+      if (shouldSendOneDay) session.peerInterview.reminderState.oneDaySent = true;
+      if (shouldSendOneHour) session.peerInterview.reminderState.oneHourSent = true;
+      session.peerInterview.reminderState.lastSentAt = new Date();
+
+      await session.save();
+      sessionsUpdated += 1;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        sessionsChecked: sessions.length,
+        sessionsUpdated,
+        remindersSent
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

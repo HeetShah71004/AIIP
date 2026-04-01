@@ -6,6 +6,11 @@ const sessionSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  sessionType: {
+    type: String,
+    enum: ['mock', 'peer'],
+    default: 'mock'
+  },
   score: {
     type: Number,
     default: 0
@@ -33,7 +38,7 @@ const sessionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'completed'],
+    enum: ['pending', 'completed', 'open', 'matched', 'booked', 'cancelled'],
     default: 'pending'
   },
   createdAt: {
@@ -61,7 +66,65 @@ const sessionSchema = new mongoose.Schema({
       enum: ['Easy', 'Medium', 'Hard'],
       default: 'Easy'
     }
+  },
+  peerInterview: {
+    hostUser: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User'
+    },
+    guestUser: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User'
+    },
+    role: {
+      type: String,
+      trim: true,
+      maxlength: 80
+    },
+    level: {
+      type: String,
+      trim: true,
+      maxlength: 40
+    },
+    topic: {
+      type: String,
+      trim: true,
+      maxlength: 120
+    },
+    timezone: {
+      type: String,
+      trim: true,
+      default: 'UTC'
+    },
+    startAt: Date,
+    endAt: Date,
+    meetingProvider: {
+      type: String,
+      trim: true,
+      default: 'internal'
+    },
+    meetingJoinUrl: {
+      type: String,
+      trim: true
+    },
+    calendarEventId: {
+      type: String,
+      trim: true
+    },
+    reminderState: {
+      oneDaySent: {
+        type: Boolean,
+        default: false
+      },
+      oneHourSent: {
+        type: Boolean,
+        default: false
+      },
+      lastSentAt: Date
+    }
   }
 });
+
+sessionSchema.index({ sessionType: 1, status: 1, 'peerInterview.startAt': 1 });
 
 export default mongoose.model('Session', sessionSchema);

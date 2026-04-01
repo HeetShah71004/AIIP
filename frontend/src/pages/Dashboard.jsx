@@ -113,6 +113,9 @@ const Dashboard = () => {
           <Button variant="outline" onClick={() => navigate('/company-prep')} className="gap-2">
             <Building2 size={20} /> Targeted Practice
           </Button>
+          <Button variant="outline" onClick={() => navigate('/peer-interview')} className="gap-2">
+            <ArrowUpDown size={20} /> Peer Interview
+          </Button>
           <Button onClick={() => navigate('/upload')} className="gap-2">
             <Play size={20} fill="currentColor" /> Quick Start
           </Button>

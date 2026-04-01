@@ -20,6 +20,7 @@ import './index.css';
 import ConversationalInterview from './pages/ConversationalInterview';
 import Gamification from './pages/Gamification';
 import ResumeBuilder from './pages/ResumeBuilder';
+import PeerInterview from './pages/PeerInterview';
 
 const AppContent = () => {
   const location = useLocation();
@@ -136,6 +137,14 @@ const AppContent = () => {
                 <ResumeBuilder />
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/peer-interview"
+            element={
+              <ProtectedRoute>
+                <PeerInterview />
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </main>

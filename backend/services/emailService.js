@@ -261,3 +261,63 @@ export const sendResumeDraftEmail = async ({ to, resume, pdfBuffer, pdfFilename 
     return { status: 'failed', sent: false, message: error.message || 'Failed to send resume email.' };
   }
 };
+
+const buildPeerReminderHtml = ({ recipientName, partnerName, role, level, topic, startAt, timezone, joinUrl }) => {
+  return `
+    <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.5;">
+      <h2 style="margin: 0 0 10px;">Peer Interview Reminder</h2>
+      <p style="margin: 0 0 12px;">Hi ${recipientName || 'there'}, your peer interview is coming up.</p>
+      <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc;">
+        <p style="margin: 0 0 8px;"><strong>Peer:</strong> ${partnerName || 'Pending assignment'}</p>
+        <p style="margin: 0 0 8px;"><strong>Role/Level:</strong> ${role || 'General'}${level ? ` / ${level}` : ''}</p>
+        <p style="margin: 0 0 8px;"><strong>Topic:</strong> ${topic || 'General interview practice'}</p>
+        <p style="margin: 0 0 8px;"><strong>Starts at:</strong> ${startAt}</p>
+        <p style="margin: 0 0 8px;"><strong>Timezone:</strong> ${timezone || 'UTC'}</p>
+        <p style="margin: 0;"><strong>Join link:</strong> <a href="${joinUrl}">${joinUrl}</a></p>
+      </div>
+      <p style="margin: 14px 0 0; color: #475569; font-size: 13px;">Good luck with your peer interview session.</p>
+    </div>
+  `;
+};
+
+const buildPeerReminderText = ({ recipientName, partnerName, role, level, topic, startAt, timezone, joinUrl }) => {
+  return [
+    `Hi ${recipientName || 'there'},`,
+    '',
+    'Your peer interview is coming up.',
+    '',
+    `Peer: ${partnerName || 'Pending assignment'}`,
+    `Role/Level: ${role || 'General'}${level ? ` / ${level}` : ''}`,
+    `Topic: ${topic || 'General interview practice'}`,
+    `Starts at: ${startAt}`,
+    `Timezone: ${timezone || 'UTC'}`,
+    `Join link: ${joinUrl}`
+  ].join('\n');
+};
+
+export const sendPeerInterviewReminderEmail = async ({ to, recipientName, partnerName, role, level, topic, startAt, timezone, joinUrl }) => {
+  if (!to) {
+    return { status: 'skipped', sent: false, message: 'Recipient email not available.' };
+  }
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    return { status: 'skipped', sent: false, message: 'SMTP is not configured on server.' };
+  }
+
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
+
+  try {
+    await transporter.sendMail({
+      from,
+      to,
+      subject: 'Interv AI - Peer Interview Reminder',
+      text: buildPeerReminderText({ recipientName, partnerName, role, level, topic, startAt, timezone, joinUrl }),
+      html: buildPeerReminderHtml({ recipientName, partnerName, role, level, topic, startAt, timezone, joinUrl })
+    });
+
+    return { status: 'sent', sent: true, message: 'Peer interview reminder email sent.' };
+  } catch (error) {
+    return { status: 'failed', sent: false, message: error.message || 'Failed to send peer reminder email.' };
+  }
+};

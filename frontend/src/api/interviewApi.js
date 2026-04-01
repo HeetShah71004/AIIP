@@ -20,6 +20,41 @@ export const getQuestionsFromBank = async (params) => {
     return response.data;
 };
 
+export const createPeerAvailability = async (data) => {
+    const response = await api.post('/sessions/peer/availability', data);
+    return response.data;
+};
+
+export const searchPeerAvailability = async (params) => {
+    const response = await api.get('/sessions/peer/availability/search', { params });
+    return response.data;
+};
+
+export const autoMatchPeer = async (data) => {
+    const response = await api.post('/sessions/peer/match', data);
+    return response.data;
+};
+
+export const bookPeerSession = async (sessionId) => {
+    const response = await api.post('/sessions/peer/book', { sessionId });
+    return response.data;
+};
+
+export const getUpcomingPeerSessions = async () => {
+    const response = await api.get('/sessions/peer/upcoming');
+    return response.data;
+};
+
+export const reschedulePeerSession = async (sessionId, payload) => {
+    const response = await api.patch(`/sessions/peer/${sessionId}/reschedule`, payload);
+    return response.data;
+};
+
+export const cancelPeerSession = async (sessionId) => {
+    const response = await api.patch(`/sessions/peer/${sessionId}/cancel`);
+    return response.data;
+};
+
 const inferExtensionFromMime = (mimeType = '') => {
     const normalized = String(mimeType).toLowerCase();
     if (normalized.includes('webm')) return 'webm';
