@@ -21,6 +21,7 @@ import ConversationalInterview from './pages/ConversationalInterview';
 import Gamification from './pages/Gamification';
 import ResumeBuilder from './pages/ResumeBuilder';
 import PeerInterview from './pages/PeerInterview';
+import RecruiterDashboard from './pages/RecruiterDashboard';
 
 const AppContent = () => {
   const location = useLocation();
@@ -143,6 +144,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <PeerInterview />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recruiter-dashboard"
+            element={
+              <ProtectedRoute>
+                <RecruiterDashboard />
               </ProtectedRoute>
             }
           />

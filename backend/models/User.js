@@ -27,6 +27,11 @@ const userSchema = new mongoose.Schema({
     sparse: true
   },
   avatar: String,
+  role: {
+    type: String,
+    enum: ['candidate', 'recruiter'],
+    default: 'candidate'
+  },
   refreshToken: String,
   createdAt: {
     type: Date,

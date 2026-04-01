@@ -61,6 +61,12 @@ const Navbar = () => {
             <Layout size={17} />
             <span className="hidden sm:inline">Resume Builder</span>
           </Link>
+          {user?.role === 'recruiter' && (
+            <Link to="/recruiter-dashboard" className={navLinkClass('/recruiter-dashboard')}>
+              <UsersRound size={17} />
+              <span className="hidden sm:inline">Recruiter</span>
+            </Link>
+          )}
           <div className="hidden sm:block h-6 w-px bg-border/80 dark:bg-zinc-700 mx-1" />
 
           <DropdownMenu>

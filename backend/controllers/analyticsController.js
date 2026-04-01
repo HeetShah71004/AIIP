@@ -322,3 +322,129 @@ export const getAdvancedStats = async (req, res) => {
   }
 };
 
+// RECRUITER ANALYTICS
+
+// Get cohort statistics per company/role
+export const getRecruiterStats = async (req, res) => {
+  try {
+    const { company, roleLevel } = req.query;
+    
+    const matchQuery = { status: 'completed' };
+    if (company) matchQuery.company = company;
+    if (roleLevel) matchQuery.roleLevel = roleLevel;
+
+    const stats = await Session.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: { company: '$company', role: '$roleLevel' },
+          avgScore: { $avg: '$score' },
+          totalCandidates: { $sum: 1 },
+          maxScore: { $max: '$score' },
+          minScore: { $min: '$score' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          company: '$_id.company',
+          role: '$_id.role',
+          avgScore: { $round: ['$avgScore', 2] },
+          totalCandidates: 1,
+          maxScore: 1,
+          minScore: 1
+        }
+      }
+    ]);
+
+    res.status(200).json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Recruiter Stats Error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get top candidates ranked by composite score
+export const getTopCandidates = async (req, res) => {
+  try {
+    const { company, roleLevel, limit = 10 } = req.query;
+
+    const matchQuery = { status: 'completed' };
+    if (company) matchQuery.company = company;
+    if (roleLevel) matchQuery.roleLevel = roleLevel;
+
+    const topCandidates = await Session.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: '$user',
+          bestScore: { $max: '$score' },
+          avgScore: { $avg: '$score' },
+          lastAttempt: { $max: '$completedAt' },
+          sessionCount: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userDetails'
+        }
+      },
+      { $unwind: '$userDetails' },
+      {
+        $project: {
+          _id: 1,
+          name: '$userDetails.name',
+          email: '$userDetails.email',
+          avatar: '$userDetails.avatar',
+          bestScore: { $round: ['$bestScore', 2] },
+          avgScore: { $round: ['$avgScore', 2] },
+          lastAttempt: 1,
+          sessionCount: 1
+        }
+      },
+      { $sort: { bestScore: -1 } },
+      { $limit: parseInt(limit) }
+    ]);
+
+    res.status(200).json({ success: true, data: topCandidates });
+  } catch (error) {
+    console.error('Top Candidates Error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Export recruiter report (CSV/JSON for now)
+export const exportRecruiterReport = async (req, res) => {
+  try {
+    const { company, roleLevel, format = 'json' } = req.query;
+
+    const matchQuery = { status: 'completed' };
+    if (company) matchQuery.company = company;
+    if (roleLevel) matchQuery.roleLevel = roleLevel;
+
+    const data = await Session.find(matchQuery)
+      .populate('user', 'name email')
+      .select('user score company roleLevel interviewRound completedAt')
+      .sort({ completedAt: -1 });
+
+    if (format === 'csv') {
+      const header = 'Candidate,Email,Score,Company,Role,Round,Date\n';
+      const rows = data.map(s => 
+        `"${s.user?.name || 'N/A'}","${s.user?.email || 'N/A'}",${s.score},"${s.company || 'N/A'}","${s.roleLevel || 'N/A'}","${s.interviewRound || 'N/A'}",${new Date(s.completedAt).toLocaleDateString()}`
+      ).join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=recruiter-report.csv');
+      return res.status(200).send(header + rows);
+    }
+
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('Export Report Error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
