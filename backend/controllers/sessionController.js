@@ -93,7 +93,11 @@ export const startSession = async (req, res) => {
 
           // Save the generated questions back to QuestionBank to enrich the DB
           const newBankQuestions = await Promise.all(generatedTextArray.map(async text => {
-            const qt = interviewRound === 'Coding' ? 'Coding' : 'Technical';
+            let qt = 'Technical';
+            if (interviewRound === 'Coding') qt = 'Coding';
+            else if (interviewRound === 'Behavioral') qt = 'Behavioral';
+            else if (['System Design', 'Phone Screen'].includes(interviewRound)) qt = 'Technical'; // May use theoretical layout in frontend
+
             return await QuestionBank.create({
               text,
               category: category || 'Fullstack',
@@ -305,7 +309,7 @@ export const submitAnswer = async (req, res) => {
         const perQuestionTime = Math.ceil(30 / session.totalQuestions);
         if (nextQuestion) {
           nextQuestion.text = followUpText;
-          nextQuestion.type = 'Technical';
+          nextQuestion.type = session.interviewRound === 'Behavioral' ? 'Behavioral' : (session.interviewRound === 'Coding' ? 'Coding' : 'Technical');
           nextQuestion.difficulty = nextDifficulty;
           nextQuestion.timeLimit = perQuestionTime;
           await nextQuestion.save();
@@ -313,7 +317,7 @@ export const submitAnswer = async (req, res) => {
           await Question.create({
             session: session._id,
             text: followUpText,
-            type: 'Technical',
+            type: session.interviewRound === 'Behavioral' ? 'Behavioral' : (session.interviewRound === 'Coding' ? 'Coding' : 'Technical'),
             difficulty: nextDifficulty,
             timeLimit: perQuestionTime
           });
@@ -488,7 +492,7 @@ export const submitAnswerStream = async (req, res) => {
         const perQuestionTime = Math.ceil(30 / session.totalQuestions);
         if (nextQuestion) {
           nextQuestion.text = followUpText;
-          nextQuestion.type = 'Technical';
+          nextQuestion.type = session.interviewRound === 'Behavioral' ? 'Behavioral' : (session.interviewRound === 'Coding' ? 'Coding' : 'Technical');
           nextQuestion.difficulty = nextDifficulty;
           nextQuestion.timeLimit = perQuestionTime;
           await nextQuestion.save();
@@ -496,7 +500,7 @@ export const submitAnswerStream = async (req, res) => {
           nextQuestion = await Question.create({
             session: session._id,
             text: followUpText,
-            type: 'Technical',
+            type: session.interviewRound === 'Behavioral' ? 'Behavioral' : (session.interviewRound === 'Coding' ? 'Coding' : 'Technical'),
             difficulty: nextDifficulty,
             timeLimit: perQuestionTime
           });

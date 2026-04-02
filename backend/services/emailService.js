@@ -321,3 +321,107 @@ export const sendPeerInterviewReminderEmail = async ({ to, recipientName, partne
     return { status: 'failed', sent: false, message: error.message || 'Failed to send peer reminder email.' };
   }
 };
+
+export const sendInvitationEmail = async ({ to, recruiterName, customMessage }) => {
+  if (!to) {
+    return { status: 'skipped', sent: false, message: 'Recipient email not available.' };
+  }
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    return { status: 'skipped', sent: false, message: 'SMTP is not configured on server.' };
+  }
+
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
+  const signupUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+      <h2 style="color: #0d9488; margin-bottom: 20px;">You've Been Invited to Interv AI</h2>
+      <p style="font-size: 16px;">Hi there,</p>
+      <p style="font-size: 15px;"><strong>${recruiterName || 'A recruiter'}</strong> has invited you to join **Interv AI**, the premium AI-powered mock interview platform.</p>
+      
+      ${customMessage ? `
+      <div style="margin: 20px 0; padding: 15px; background-color: #f8fafc; border-left: 4px solid #0d9488; font-style: italic;">
+        "${customMessage}"
+      </div>
+      ` : ''}
+
+      <p style="font-size: 15px;">Interv AI helps you master your interview skills with real-time AI feedback, tailored question banks, and advanced performance analytics.</p>
+      
+      <div style="margin: 30px 0; text-align: center;">
+        <a href="${signupUrl}" style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Join Interv AI Now</a>
+      </div>
+
+      <p style="font-size: 13px; color: #64748b; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+        If you have any questions, feel free to contact our support team.
+      </p>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from,
+      to,
+      subject: `Invitation to join Interv AI from ${recruiterName || 'a recruiter'}`,
+      html
+    });
+
+    return { status: 'sent', sent: true, message: 'Invitation email sent successfully.' };
+  } catch (error) {
+    console.error('Email Error:', error);
+    return { status: 'failed', sent: false, message: error.message || 'Failed to send invitation email.' };
+  }
+};
+
+export const sendScheduleEmail = async ({ to, recruiterName, date, time, message }) => {
+  if (!to) {
+    return { status: 'skipped', sent: false, message: 'Recipient email not available.' };
+  }
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    return { status: 'skipped', sent: false, message: 'SMTP is not configured on server.' };
+  }
+
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
+  const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+      <h2 style="color: #0d9488; margin-bottom: 20px;">Technical Interview Scheduled</h2>
+      <p style="font-size: 16px;">Hi there,</p>
+      <p style="font-size: 15px;"><strong>${recruiterName || 'A recruiter'}</strong> has scheduled a technical interview/mock session for you on **Interv AI**.</p>
+      
+      <div style="margin: 20px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <p style="margin: 0 0 10px;"><strong>Date:</strong> ${new Date(date).toLocaleDateString()}</p>
+        <p style="margin: 0 0 10px;"><strong>Time:</strong> ${time}</p>
+        ${message ? `<p style="margin: 15px 0 0; font-style: italic; color: #475569;">" ${message} "</p>` : ''}
+      </div>
+
+      <p style="font-size: 15px;">Please make sure to log in to your dashboard at the scheduled time to begin your session.</p>
+      
+      <div style="margin: 30px 0; text-align: center;">
+        <a href="${dashboardUrl}" style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Go to My Dashboard</a>
+      </div>
+
+      <p style="font-size: 13px; color: #64748b; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+        Best of luck,<br>The Interv AI Team
+      </p>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from,
+      to,
+      subject: `Mock Interview Scheduled: ${new Date(date).toLocaleDateString()} at ${time}`,
+      html
+    });
+
+    return { status: 'sent', sent: true, message: 'Schedule notification email sent successfully.' };
+  } catch (error) {
+    console.error('Email Error:', error);
+    return { status: 'failed', sent: false, message: error.message || 'Failed to send schedule email.' };
+  }
+};

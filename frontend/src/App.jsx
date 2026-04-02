@@ -46,7 +46,7 @@ const AppContent = () => {
           <Route 
             path="/dashboard" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <Dashboard />
               </ProtectedRoute>
             } 
@@ -54,7 +54,7 @@ const AppContent = () => {
           <Route 
             path="/upload" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <ResumeUpload />
               </ProtectedRoute>
             } 
@@ -62,7 +62,7 @@ const AppContent = () => {
           <Route 
             path="/company-prep" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <CompanySelection />
               </ProtectedRoute>
             } 
@@ -70,7 +70,7 @@ const AppContent = () => {
           <Route 
             path="/profile"  
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate', 'recruiter']}>
                 <Profile />
               </ProtectedRoute>
             } 
@@ -78,7 +78,7 @@ const AppContent = () => {
           <Route 
             path="/interview/:sessionId" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <MockInterview />
               </ProtectedRoute>
             } 
@@ -86,7 +86,7 @@ const AppContent = () => {
           <Route 
             path="/feedback/:sessionId" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <InterviewFeedback />
               </ProtectedRoute>
             } 
@@ -94,7 +94,7 @@ const AppContent = () => {
           <Route 
             path="/analytics" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <Analytics />
               </ProtectedRoute>
             } 
@@ -102,7 +102,7 @@ const AppContent = () => {
           <Route 
             path="/settings" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate', 'recruiter']}>
                 <Settings />
               </ProtectedRoute>
             } 
@@ -110,7 +110,7 @@ const AppContent = () => {
           <Route
             path="/conversational-interview"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <ConversationalInterview />
               </ProtectedRoute>
             }
@@ -118,7 +118,7 @@ const AppContent = () => {
           <Route
             path="/gamification"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <Gamification />
               </ProtectedRoute>
             }
@@ -126,7 +126,7 @@ const AppContent = () => {
           <Route 
             path="/playground" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <CodePlayground />
               </ProtectedRoute>
             } 
@@ -134,7 +134,7 @@ const AppContent = () => {
           <Route 
             path="/resume-builder" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <ResumeBuilder />
               </ProtectedRoute>
             } 
@@ -142,7 +142,7 @@ const AppContent = () => {
           <Route
             path="/peer-interview"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <PeerInterview />
               </ProtectedRoute>
             }
@@ -150,7 +150,7 @@ const AppContent = () => {
           <Route
             path="/recruiter-dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['recruiter']}>
                 <RecruiterDashboard />
               </ProtectedRoute>
             }

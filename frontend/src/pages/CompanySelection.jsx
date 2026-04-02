@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { Search, Building2, Briefcase, Users, Play, Loader2, ChevronRight, Check } from 'lucide-react';
+import { Search, Building2, Briefcase, Users, Play, Loader2, ChevronRight, Check, Code2, MessageSquare } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -160,16 +160,25 @@ const CompanySelection = () => {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="grid grid-cols-2 gap-3">
-                {INTERVIEW_ROUNDS.map(round => (
-                   <Button
-                     key={round}
-                     variant={selectedRound === round ? "default" : "outline"}
-                     onClick={() => setSelectedRound(round)}
-                     className={`h-12 w-full justify-start px-4 font-medium transition-all ${selectedRound === round ? 'shadow-md shadow-primary/30 bg-primary hover:bg-primary/90' : 'hover:bg-muted/50'}`}
-                   >
-                     {round}
-                   </Button>
-                ))}
+                {INTERVIEW_ROUNDS.map(round => {
+                  const isCoding = ["Technical", "Coding"].includes(round);
+                  return (
+                    <Button
+                      key={round}
+                      variant={selectedRound === round ? "default" : "outline"}
+                      onClick={() => setSelectedRound(round)}
+                      className={`h-16 w-full flex flex-col items-start justify-center px-4 gap-1 transition-all ${selectedRound === round ? 'shadow-md shadow-primary/30 bg-primary hover:bg-primary/90' : 'hover:bg-muted/50'}`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold">{round}</span>
+                        {isCoding ? <Code2 size={14} className="opacity-60" /> : <MessageSquare size={14} className="opacity-60" />}
+                      </div>
+                      <Badge variant="secondary" className={`text-[10px] uppercase font-black tracking-widest px-2 py-0 h-4 border-none ${selectedRound === round ? 'bg-white/20 text-white' : 'bg-muted/50 text-muted-foreground'}`}>
+                        {isCoding ? "IDE-Based" : "Conversational"}
+                      </Badge>
+                    </Button>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

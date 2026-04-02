@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('candidate');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,10 +35,14 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
+      const res = await login(email, password, role);
       toast.success('Login successful!');
-      if (onSuccess) onSuccess();
-      else window.location.href = '/dashboard';
+      if (onSuccess) onSuccess(res.data);
+      else {
+        // Use the role from the response if available, otherwise fallback to selected role
+        const userRole = res.data?.role || role;
+        window.location.href = userRole === 'recruiter' ? '/recruiter-dashboard' : '/dashboard';
+      }
     } catch (err) {
       const msg = err.response?.data?.error || 'Failed to login';
       setError(msg);
@@ -50,10 +55,13 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       setLoading(true);
-      await googleLogin(credentialResponse.credential);
+      const res = await googleLogin(credentialResponse.credential, role);
       toast.success('Google Login successful!');
-      if (onSuccess) onSuccess();
-      else window.location.href = '/dashboard';
+      if (onSuccess) onSuccess(res.data);
+      else {
+        const userRole = res.data?.role || role;
+        window.location.href = userRole === 'recruiter' ? '/recruiter-dashboard' : '/dashboard';
+      }
     } catch (err) {
       toast.error('Google Login failed');
     } finally {
@@ -75,6 +83,40 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-3">
+          <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Login as</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setRole('candidate')}
+              className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
+                role === 'candidate' 
+                ? 'bg-primary/10 border-primary text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)]' 
+                : 'bg-foreground/[0.03] border-border text-muted-foreground hover:bg-foreground/[0.06]'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${role === 'candidate' ? 'border-primary' : 'border-muted-foreground/30'}`}>
+                {role === 'candidate' && <div className="w-2 h-2 rounded-full bg-primary" />}
+              </div>
+              <span className="text-xs font-bold">Candidate</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole('recruiter')}
+              className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
+                role === 'recruiter' 
+                ? 'bg-primary/10 border-primary text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)]' 
+                : 'bg-foreground/[0.03] border-border text-muted-foreground hover:bg-foreground/[0.06]'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${role === 'recruiter' ? 'border-primary' : 'border-muted-foreground/30'}`}>
+                {role === 'recruiter' && <div className="w-2 h-2 rounded-full bg-primary" />}
+              </div>
+              <span className="text-xs font-bold">Recruiter</span>
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="modal-email" className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Email Address</Label>
           <Input

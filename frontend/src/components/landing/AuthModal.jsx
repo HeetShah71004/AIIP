@@ -19,17 +19,19 @@ const AuthModal = ({ isOpen, onClose, view = 'login' }) => {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
         {currentView === 'login' ? (
           <LoginForm 
-            onSuccess={() => {
+            onSuccess={(userData) => {
               onClose();
-              window.location.href = '/dashboard';
+              const role = userData?.role || userData?.data?.role || 'candidate';
+              window.location.href = role === 'recruiter' ? '/recruiter-dashboard' : '/dashboard';
             }} 
             onSwitchToSignup={() => setCurrentView('signup')} 
           />
         ) : (
           <SignupForm 
-            onSuccess={() => {
+            onSuccess={(userData) => {
               onClose();
-              window.location.href = '/dashboard';
+              const role = userData?.role || userData?.data?.role || 'candidate';
+              window.location.href = role === 'recruiter' ? '/recruiter-dashboard' : '/dashboard';
             }} 
             onSwitchToLogin={() => setCurrentView('login')} 
           />

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'candidate' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,9 +21,10 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
     setLoading(true);
     setError('');
     try {
-      await api.post('/auth/register', formData);
+      const res = await api.post('/auth/register', formData);
       toast.success('Account created successfully!');
-      if (onSwitchToLogin) onSwitchToLogin();
+      if (onSuccess) onSuccess(res.data.data);
+      else if (onSwitchToLogin) onSwitchToLogin();
     } catch (err) {
       const msg = err.response?.data?.error || 'Failed to sign up';
       setError(msg);
@@ -36,10 +37,10 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       setLoading(true);
-      await googleLogin(credentialResponse.credential);
+      const res = await googleLogin(credentialResponse.credential, formData.role);
       toast.success('Google Signup successful!');
-      if (onSuccess) onSuccess();
-      else window.location.href = '/dashboard';
+      if (onSuccess) onSuccess(res.data);
+      else window.location.href = formData.role === 'recruiter' ? '/recruiter-dashboard' : '/dashboard';
     } catch (err) {
       toast.error('Google Signup failed');
     } finally {
@@ -51,7 +52,7 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
     <div className="space-y-8 w-full max-w-sm mx-auto py-2">
       <div className="space-y-3 text-center">
         <h2 className="text-3xl font-bold tracking-tight text-foreground">Create account</h2>
-        <p className="text-sm text-muted-foreground font-light">Join 10k+ candidates preparing today</p>
+        <p className="text-sm text-muted-foreground font-light">Join 10k+ users preparing today</p>
       </div>
 
       {error && (
@@ -61,6 +62,40 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-3">
+          <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">I am a</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, role: 'candidate' })}
+              className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
+                formData.role === 'candidate' 
+                ? 'bg-primary/10 border-primary text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)]' 
+                : 'bg-foreground/[0.03] border-border text-muted-foreground hover:bg-foreground/[0.06]'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${formData.role === 'candidate' ? 'border-primary' : 'border-muted-foreground/30'}`}>
+                {formData.role === 'candidate' && <div className="w-2 h-2 rounded-full bg-primary" />}
+              </div>
+              <span className="text-xs font-bold">Candidate</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, role: 'recruiter' })}
+              className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
+                formData.role === 'recruiter' 
+                ? 'bg-primary/10 border-primary text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)]' 
+                : 'bg-foreground/[0.03] border-border text-muted-foreground hover:bg-foreground/[0.06]'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${formData.role === 'recruiter' ? 'border-primary' : 'border-muted-foreground/30'}`}>
+                {formData.role === 'recruiter' && <div className="w-2 h-2 rounded-full bg-primary" />}
+              </div>
+              <span className="text-xs font-bold">Recruiter</span>
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="modal-signup-name" className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Full Name</Label>
           <Input

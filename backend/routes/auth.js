@@ -4,7 +4,10 @@ import {
   login,
   googleLogin,
   logout,
-  getMe
+  getMe,
+  inviteCandidate,
+  getUserProfile,
+  scheduleInterview
 } from '../controllers/authController.js';
 
 const router = express.Router();
@@ -16,5 +19,9 @@ router.post('/login', login);
 router.post('/google-login', googleLogin);
 router.get('/logout', protect, logout);
 router.get('/me', protect, getMe);
+router.post('/invite-candidate', protect, inviteCandidate);
+router.get('/user/:id', protect, getUserProfile);
+router.get('/user/:id', protect, getUserProfile);
+router.post('/schedule-mock', protect, scheduleInterview);
 
 export default router;

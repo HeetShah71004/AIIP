@@ -27,8 +27,8 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, []);
 
-  const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
+  const login = async (email, password, role) => {
+    const res = await api.post('/auth/login', { email, password, role });
     localStorage.setItem('accessToken', res.data.accessToken);
     localStorage.setItem('refreshToken', res.data.refreshToken);
     // Be robust about user data location
@@ -37,8 +37,8 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  const googleLogin = async (idToken) => {
-    const res = await api.post('/auth/google-login', { idToken });
+  const googleLogin = async (idToken, role) => {
+    const res = await api.post('/auth/google-login', { idToken, role });
     localStorage.setItem('accessToken', res.data.accessToken);
     localStorage.setItem('refreshToken', res.data.refreshToken);
     const userData = res.data.data || res.data.user || (res.data.email ? res.data : null);

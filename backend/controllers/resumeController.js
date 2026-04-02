@@ -187,7 +187,8 @@ export const parseAndImportResume = async (req, res, next) => {
 // @access  Private
 export const getResume = async (req, res, next) => {
   try {
-    const resume = await Resume.findOne({ user: req.user.id });
+    const userId = (req.user.role === 'recruiter' && req.query.candidateId) ? req.query.candidateId : req.user.id;
+    const resume = await Resume.findOne({ user: userId });
     
     res.status(200).json({
       success: true,

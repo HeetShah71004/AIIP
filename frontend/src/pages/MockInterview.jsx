@@ -290,8 +290,19 @@ const MockInterview = () => {
 
     useEffect(() => {
         if (questions[currentQuestionIndex]) {
-            setIsCodingMode(questions[currentQuestionIndex].type === 'Coding');
-            if (questions[currentQuestionIndex].type === 'Coding') {
+            // Priority 1: Check overall session round type to force Theoretical UI for certain rounds
+            const theoreticalRounds = ['Behavioral', 'Phone Screen', 'System Design'];
+            const isForcedTheoretical = theoreticalRounds.includes(session?.interviewRound);
+            
+            // Priority 2: Check individual question type (fallback for general sessions)
+            const codingTypes = ['Coding', 'Technical'];
+            const isCodingType = codingTypes.includes(questions[currentQuestionIndex].type);
+            
+            // Set coding mode only if NOT forced theoretical AND is a coding type
+            const isCoding = !isForcedTheoretical && isCodingType;
+            setIsCodingMode(isCoding);
+            
+            if (isCoding) {
                 setCode(questions[currentQuestionIndex].codeTemplate || '// Start coding here...');
                 setOutput('');
                 setUserInput('');
@@ -301,7 +312,7 @@ const MockInterview = () => {
                 setUserInput('');
             }
         }
-    }, [currentQuestionIndex, questions]);
+    }, [currentQuestionIndex, questions, session?.interviewRound]);
 
     useEffect(() => {
         return () => {
@@ -865,316 +876,281 @@ const MockInterview = () => {
             {/* Main Resizable Layout */}
             <main className="flex-1 overflow-hidden relative z-10 flex flex-col">
                 {!isFinished ? (
-                <Group orientation="horizontal">
-                    {/* Left Pane: Description & Chat */}
-                    <Panel defaultSize={40} minSize={25} className="flex flex-col">
-                        <Group orientation="vertical">
-                            {/* Problem Description Panel */}
-                            <Panel defaultSize={50} minSize={20} className="flex flex-col overflow-hidden">
-                                <div className={cn(
-                                    "h-10 px-4 border-b text-[10px] font-bold uppercase tracking-widest flex items-center justify-between shrink-0 transition-colors duration-300",
-                                    isDark ? "bg-[#252528] text-zinc-400 border-white/[0.05]" : "bg-slate-100 text-slate-500 border-slate-200"
-                                )}>
-                                    <div className="flex items-center gap-2">
-                                        <FileText size={14} className="text-[#4d6bfe]" />
-                                        Description
-                                    </div>
-                                </div>
-                                <ScrollArea className={cn(
-                                    "flex-1 transition-colors duration-300",
-                                    isDark ? "bg-[#1e1e20]" : "bg-white"
-                                )}>
-                                    <div className="p-6 space-y-4 max-w-4xl mx-auto">
-                                        {questions[currentQuestionIndex] && (
-                                            <div className="animate-in fade-in duration-700 font-inter">
-                                                <div className="flex items-center justify-between mb-4 gap-4">
-                                                    <h2 className={cn(
-                                                        "text-2xl font-bold tracking-tight",
-                                                        isDark ? "text-white" : "text-slate-900"
-                                                    )}>
-                                                        {questions[currentQuestionIndex].title || `Question ${currentQuestionIndex + 1}`}
+                <div className="flex-1 overflow-hidden">
+                    {isCodingMode ? (
+                        <Group orientation="horizontal" className="h-full">
+                            {/* Left Pane: Description & Chat (IDE Mode) */}
+                            <Panel defaultSize={40} minSize={25} className="flex flex-col">
+                                <Group orientation="vertical">
+                                    <Panel defaultSize={50} minSize={20} className="flex flex-col overflow-hidden">
+                                        <div className={cn(
+                                            "h-10 px-4 border-b text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 shrink-0 transition-colors duration-300",
+                                            isDark ? "bg-[#252528] text-zinc-400 border-white/[0.05]" : "bg-slate-100 text-slate-500 border-slate-200"
+                                        )}>
+                                            <FileText size={14} className="text-[#4d6bfe]" />
+                                            Problem Description
+                                        </div>
+                                        <ScrollArea className={cn(
+                                            "flex-1 transition-colors duration-300",
+                                            isDark ? "bg-[#1e1e20]" : "bg-white"
+                                        )}>
+                                            <div className="p-8 space-y-6 max-w-4xl mx-auto font-inter">
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <h2 className={cn("text-2xl font-black tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                                                        {questions[currentQuestionIndex]?.title || `Question ${currentQuestionIndex + 1}`}
                                                     </h2>
-                                                    {questions[currentQuestionIndex] && (
-                                                        <DifficultyBadge 
-                                                            difficulty={questions[currentQuestionIndex].difficulty || 'Medium'}
-                                                            eloRating={session?.difficultyRating}
-                                                        />
-                                                    )}
+                                                    <DifficultyBadge difficulty={questions[currentQuestionIndex]?.difficulty || 'Medium'} />
                                                 </div>
                                                 <div className={cn(
-                                                    "prose max-w-none leading-relaxed text-sm lg:text-base selection:bg-[#4d6bfe]/30",
+                                                    "prose max-w-none leading-relaxed text-base",
                                                     isDark ? "prose-invert text-zinc-400" : "prose-slate text-slate-700"
                                                 )}>
-                                                    <div dangerouslySetInnerHTML={{ __html: questions[currentQuestionIndex].text }} />
+                                                    <div dangerouslySetInnerHTML={{ __html: questions[currentQuestionIndex]?.text }} />
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
-                                </ScrollArea>
+                                        </ScrollArea>
+                                    </Panel>
+                                    
+                                    <ResizeHandle direction="vertical" isDark={isDark} />
+                                    
+                                    <Panel defaultSize={50} minSize={20} className="flex flex-col overflow-hidden">
+                                        <div className={cn(
+                                            "h-10 px-4 border-b text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 shrink-0",
+                                            isDark ? "bg-[#252528] text-zinc-400 border-white/[0.05]" : "bg-slate-100 text-slate-500 border-slate-200"
+                                        )}>
+                                            <MessageSquare size={14} className="text-[#4d6bfe]" />
+                                            AI Interaction
+                                        </div>
+                                        <ScrollArea ref={scrollAreaRef} className={cn("flex-1", isDark ? "bg-[#1e1e20]" : "bg-slate-50/30")}>
+                                            <div className="p-6 space-y-6">
+                                                {currentQuestionThread.filter(msg => !msg.isQuestion).map((msg, idx) => (
+                                                    <div key={idx} className={cn("flex gap-4 animate-in fade-in slide-in-from-bottom-2", msg.type === 'user' ? "flex-row-reverse" : "flex-row")}>
+                                                        <ChatAvatar type={msg.type === 'bot' || msg.type === 'ai' ? 'bot' : 'user'} />
+                                                        <div className={cn(
+                                                            "max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm",
+                                                            msg.type === 'user' ? "bg-[#4d6bfe] text-white rounded-tr-none" : "bg-card border rounded-tl-none"
+                                                        )}>
+                                                            <div className="whitespace-pre-wrap">{msg.text}</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {submitting && <div className="flex gap-4"><ChatAvatar type="bot" /><TypingIndicator /></div>}
+                                            </div>
+                                        </ScrollArea>
+                                    </Panel>
+                                </Group>
                             </Panel>
 
-                            <ResizeHandle direction="vertical" isDark={isDark} />
+                            <ResizeHandle isDark={isDark} />
 
-                            {/* AI Discussion / Chat Panel */}
-                            <Panel defaultSize={50} minSize={20} className="flex flex-col overflow-hidden">
+                            {/* Right Pane: IDE & Console (IDE Mode) */}
+                            <Panel defaultSize={60} minSize={30} className="flex flex-col">
+                                <Group orientation="vertical">
+                                    <Panel defaultSize={70} minSize={30} className="flex flex-col overflow-hidden">
+                                        <div className={cn(
+                                            "h-10 px-4 border-b text-[10px] font-bold uppercase tracking-widest flex items-center justify-between shrink-0",
+                                            isDark ? "bg-[#252528] text-zinc-400 border-white/[0.05]" : "bg-slate-100 text-slate-500 border-slate-200"
+                                        )}>
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Code2 size={14} className="text-[#4d6bfe]" /> Editor
+                                                </div>
+                                                <div className="h-4 w-px bg-border/20" />
+                                                <span className="opacity-60">{language}</span>
+                                            </div>
+                                            <Button variant="ghost" size="sm" onClick={handleRunCode} disabled={isRunning} className="h-7 text-[10px] uppercase font-bold tracking-widest text-emerald-500 hover:text-emerald-400">
+                                                {isRunning ? <Loader2 size={12} className="animate-spin mr-2" /> : <Play size={12} className="mr-2" fill="currentColor" />}
+                                                Run
+                                            </Button>
+                                        </div>
+                                        <div className="flex-1 relative">
+                                            <Editor height="100%" language={language} theme={isDark ? "vs-dark" : "vs-light"} value={code} onChange={setCode} options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true }} />
+                                        </div>
+                                    </Panel>
 
-                                <div className={cn(
-                                    "h-10 px-4 border-b text-[10px] font-bold uppercase tracking-widest flex items-center justify-between shrink-0 transition-colors duration-300",
-                                    isDark ? "bg-[#252528] text-zinc-400 border-white/[0.05]" : "bg-slate-100 text-slate-500 border-slate-200"
-                                )}>
-                                    <div className="flex items-center gap-2">
-                                        <MessageSquare size={14} className="text-[#4d6bfe]" />
-                                        AI Discussion
+                                    <ResizeHandle direction="vertical" isDark={isDark} />
+
+                                    <Panel defaultSize={30} minSize={15} className="flex flex-col overflow-hidden">
+                                        <div className={cn(
+                                            "h-10 px-4 border-b text-[10px] font-bold uppercase tracking-widest flex items-center justify-between shrink-0",
+                                            isDark ? "bg-[#252528] text-zinc-400 border-white/[0.05]" : "bg-slate-100 text-slate-500 border-slate-200"
+                                        )}>
+                                            <div className="flex items-center gap-2"><Terminal size={14} className="text-[#4d6bfe]" /> Console</div>
+                                        </div>
+                                        <ScrollArea className={cn("flex-1 p-4 font-mono text-xs", isDark ? "bg-[#0a0a0b]" : "bg-slate-900 text-slate-300")}>
+                                            {output ? <pre className={cn(output.includes('[Error]') ? "text-red-400" : "text-emerald-400")}>{output}</pre> : <div className="opacity-20 text-center py-8 font-bold uppercase tracking-widest text-[10px]">No output</div>}
+                                        </ScrollArea>
+                                        
+                                        <div className={cn("p-4 border-t flex gap-3", isDark ? "bg-[#121214] border-white/5" : "bg-slate-50")}>
+                                            <Button variant="outline" size="icon" onClick={() => setShowSkipModal(true)} disabled={submitting} className="h-10 w-10 shrink-0 border-destructive/20 bg-destructive/5 text-destructive rounded-xl hover:bg-destructive/10"><XCircle size={18} /></Button>
+                                            <div className="relative flex-1 group">
+                                                <textarea
+                                                    className={cn("w-full rounded-xl px-4 py-2.5 pr-12 text-sm focus:outline-none transition-all resize-none min-h-[40px] max-h-32 border", isDark ? "bg-zinc-900 border-white/5 text-white focus:border-[#4d6bfe]/50" : "bg-white border-slate-200 focus:border-[#4d6bfe]/50")}
+                                                    value={answer}
+                                                    onChange={(e) => setAnswer(e.target.value)}
+                                                    placeholder="Explain your approach..."
+                                                    disabled={submitting}
+                                                    rows={1}
+                                                />
+                                                <Button size="icon" onClick={handleSubmit} disabled={!answer.trim() || submitting} className="absolute right-1.5 bottom-1.5 h-7 w-7 rounded-lg bg-[#4d6bfe] shadow-md transition-all active:scale-95"><Send size={14} /></Button>
+                                            </div>
+                                        </div>
+                                    </Panel>
+                                </Group>
+                            </Panel>
+                        </Group>
+                    ) : (
+                        /* Theoretical Mode: Conversational Q&A (Non-Coding Mode) */
+                        <div className={cn("h-full flex flex-col items-center py-12 px-6", isDark ? "bg-[#0a0a0b]" : "bg-slate-50/50")}>
+                            <div className="w-full max-w-4xl flex-1 flex flex-col gap-10">
+                                {/* Question Section */}
+                                <div className="animate-in fade-in slide-in-from-top-4 duration-700">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <Badge className="bg-[#4d6bfe]/10 text-[#4d6bfe] border-[#4d6bfe]/20 rounded-full px-4 py-1.5 text-[10px] font-black uppercase tracking-widest">
+                                            Theoretical Assessment
+                                        </Badge>
+                                        <DifficultyBadge difficulty={questions[currentQuestionIndex]?.difficulty || 'Medium'} />
                                     </div>
-                                    <Bot size={14} className="text-muted-foreground/40" />
+                                    <Card className={cn(
+                                        "border-none shadow-2xl rounded-3xl overflow-hidden transition-all duration-500",
+                                        isDark ? "bg-[#18181b]/80 border-white/5" : "bg-white"
+                                    )}>
+                                        <CardHeader className="p-8 pb-4">
+                                            <CardTitle className="text-3xl font-black tracking-tight leading-tight uppercase">
+                                                Question {currentQuestionIndex + 1}
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-8 pt-0">
+                                            <div className={cn(
+                                                "text-lg lg:text-xl font-medium leading-relaxed opacity-80",
+                                                isDark ? "text-zinc-300" : "text-slate-700"
+                                            )} dangerouslySetInnerHTML={{ __html: questions[currentQuestionIndex]?.text }} />
+                                        </CardContent>
+                                    </Card>
                                 </div>
-                                <ScrollArea ref={scrollAreaRef} className={cn(
-                                    "flex-1 transition-colors duration-300",
-                                    isDark ? "bg-[#1e1e20]" : "bg-slate-50/30"
-                                )}>
-                                    <div className="p-6 space-y-6 max-w-4xl mx-auto font-inter">
-                                        {(isFinished ? chatHistory : currentQuestionThread)
-                                            .filter(msg => !msg.isQuestion)
-                                            .filter(msg => shouldShowLiveFeedback || !msg.isFeedback)
-                                            .map((msg, idx) => (
+
+                                {/* Conversational History for Current Question */}
+                                <ScrollArea ref={scrollAreaRef} className="flex-1 pr-4">
+                                    <div className="space-y-8 pb-8 font-inter">
+                                        {currentQuestionThread.filter(msg => !msg.isQuestion).map((msg, idx) => (
                                             <div key={idx} className={cn(
-                                                "flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300",
+                                                "flex gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500",
                                                 msg.type === 'user' ? "flex-row-reverse" : "flex-row"
                                             )}>
-                                                <ChatAvatar type={msg.type === 'ai' || msg.type === 'bot' ? 'bot' : 'user'} />
+                                                <div className="shrink-0 group">
+                                                    <ChatAvatar type={msg.type === 'bot' || msg.type === 'ai' ? 'bot' : 'user'} />
+                                                </div>
                                                 <div className={cn(
-                                                    "max-w-[85%] rounded-2xl p-4 text-[14px] leading-relaxed shadow-sm",
+                                                    "max-w-[75%] rounded-[2.5rem] p-6 lg:p-8 text-base lg:text-lg leading-relaxed shadow-xl transition-all hover:scale-[1.01]",
                                                     msg.type === 'user' 
-                                                        ? "bg-[#4d6bfe] text-white rounded-tr-none" 
-                                                        : (isDark ? "bg-muted/40 border border-white/5 rounded-tl-none" : "bg-white border border-slate-200 rounded-tl-none")
+                                                        ? "bg-gradient-to-br from-[#4d6bfe] to-[#3b55d1] text-white rounded-tr-none" 
+                                                        : (isDark ? "bg-[#1e1e20] border border-white/5 text-zinc-100 rounded-tl-none" : "bg-white border border-slate-100 text-slate-800 rounded-tl-none")
                                                 )}>
-                                                    <div className="whitespace-pre-wrap">{msg.text}</div>
+                                                    <div className="whitespace-pre-wrap font-medium">{msg.text}</div>
                                                     {msg.isFeedback && msg.score !== undefined && (
-                                                        <div className="mt-3 pt-3 border-t border-current/10 flex items-center justify-between">
-                                                            <div className={cn(
-                                                                "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                                                                msg.score >= 7 ? "bg-emerald-500/10 text-emerald-500" : msg.score >= 4 ? "bg-amber-500/10 text-amber-500" : "bg-red-500/10 text-red-500"
+                                                        <div className="mt-6 pt-6 border-t border-current/10 flex items-center gap-4">
+                                                            <Badge className={cn(
+                                                                "px-4 py-2 rounded-xl text-xs font-black shadow-lg",
+                                                                msg.score >= 7 ? "bg-emerald-500 text-white" : msg.score >= 4 ? "bg-amber-500 text-white" : "bg-red-500 text-white"
                                                             )}>
-                                                                <Star size={12} fill="currentColor" />
-                                                                Score: {msg.score}/10
-                                                            </div>
+                                                                AI ANALYSIS: {msg.score}/10
+                                                            </Badge>
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
                                         ))}
-                                        {submitting && <div className="flex gap-4"><ChatAvatar type="bot" /><TypingIndicator /></div>}
+                                        {submitting && (
+                                            <div className="flex gap-6 animate-in fade-in duration-300">
+                                                <ChatAvatar type="bot" />
+                                                <div className="flex items-center gap-2 px-8 py-5 bg-muted/40 rounded-full">
+                                                    <Loader2 className="h-5 w-5 animate-spin text-[#4d6bfe]" />
+                                                    <span className="text-sm font-black uppercase tracking-widest opacity-40">AI is evaluating...</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </ScrollArea>
-                            </Panel>
-                        </Group>
-                    </Panel>
 
-                    <ResizeHandle isDark={isDark} />
-
-                    {/* Right Pane: Editor & Console */}
-                    <Panel defaultSize={60} minSize={30} className="flex flex-col">
-                        <Group orientation="vertical">
-                            {/* Monaco Editor Panel */}
-                            <Panel defaultSize={70} minSize={30} className="flex flex-col overflow-hidden">
-                                <div className={cn(
-                                    "h-10 px-4 border-b text-[10px] font-bold uppercase tracking-widest flex items-center justify-between shrink-0 transition-colors duration-300",
-                                    isDark ? "bg-[#252528] text-zinc-400 border-white/[0.05]" : "bg-slate-100 text-slate-500 border-slate-200"
-                                )}>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-2">
-                                            <Code size={14} className="text-[#4d6bfe]" />
-                                            Editor
-                                        </div>
-                                        <div className="h-4 w-px bg-border/40" />
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm" className="h-7 gap-2 px-2 text-[10px] font-bold uppercase tracking-wider hover:bg-white/10">
-                                                    {language}
-                                                    <Settings2 size={12} className="opacity-50" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="start" className="w-40">
-                                                <DropdownMenuRadioGroup value={language} onValueChange={setLanguage}>
-                                                    {['javascript', 'python', 'java', 'cpp', 'go', 'csharp'].map(lang => (
-                                                        <DropdownMenuRadioItem key={lang} value={lang} className="text-[10px] uppercase font-bold tracking-widest cursor-pointer">
-                                                            {lang}
-                                                        </DropdownMenuRadioItem>
-                                                    ))}
-                                                </DropdownMenuRadioGroup>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            onClick={handleRunCode} 
-                                            disabled={isRunning}
-                                            className="h-7 gap-2 px-3 text-[10px] font-bold uppercase tracking-wider text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
-                                        >
-                                            {isRunning ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
-                                            Run
-                                        </Button>
-                                    </div>
-                                </div>
-                                <div className="flex-1 min-h-0 relative">
-                                    <Editor
-                                        height="100%"
-                                        language={language}
-                                        theme={isDark ? "vs-dark" : "vs-light"}
-                                        value={code}
-                                        onChange={(val) => setCode(val)}
-                                        options={{
-                                            minimap: { enabled: false },
-                                            fontSize: 14,
-                                            lineNumbers: 'on',
-                                            roundedSelection: true,
-                                            scrollBeyondLastLine: false,
-                                            readOnly: submitting,
-                                            automaticLayout: true,
-                                            padding: { top: 16 },
-                                            fontFamily: "'Fira Code', 'Cascadia Code', monospace",
-                                            cursorSmoothCaretAnimation: "on",
-                                            smoothScrolling: true,
-                                            lineHeight: 1.6,
-                                            renderLineHighlight: 'all',
-                                        }}
-                                    />
-                                </div>
-                            </Panel>
-
-                            <ResizeHandle direction="vertical" isDark={isDark} />
-
-                            {/* Console Panel */}
-                            <Panel defaultSize={30} minSize={15} className="flex flex-col overflow-hidden">
-                                <div className={cn(
-                                    "h-10 px-4 border-b text-[10px] font-bold uppercase tracking-widest flex items-center justify-between shrink-0 transition-colors duration-300",
-                                    isDark ? "bg-[#252528] text-zinc-400 border-white/[0.05]" : "bg-slate-100 text-slate-500 border-slate-200"
-                                )}>
-                                    <div className="flex items-center gap-2">
-                                        <Terminal size={14} className="text-[#4d6bfe]" />
-                                        Console
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/5">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                            <span className="text-[9px] text-muted-foreground">Evaluation Engine Active</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <Tabs defaultValue="output" className="flex-1 flex flex-col overflow-hidden">
+                                {/* Unified Input Bar (Theoretical Mode) */}
+                                <div className="animate-in slide-in-from-bottom-8 duration-700">
                                     <div className={cn(
-                                        "px-4 border-b flex items-center justify-between shrink-0",
-                                        isDark ? "bg-[#1a1a1c] border-white/[0.05]" : "bg-slate-50 border-slate-200"
+                                        "p-2 rounded-[2.5rem] shadow-2xl transition-all border group focus-within:ring-4 focus-within:ring-[#4d6bfe]/10",
+                                        isDark ? "bg-[#18181b]/90 border-white/5" : "bg-white border-slate-200"
                                     )}>
-                                        <TabsList className="bg-transparent h-9 gap-4 p-0">
-                                            <TabsTrigger 
-                                                value="output" 
-                                                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[#4d6bfe] rounded-none h-9 px-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground"
-                                            >
-                                                Output
-                                            </TabsTrigger>
-                                            <TabsTrigger 
-                                                value="input" 
-                                                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[#4d6bfe] rounded-none h-9 px-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground"
-                                            >
-                                                Test Input
-                                            </TabsTrigger>
-                                        </TabsList>
-                                    </div>
-
-                                    <TabsContent value="output" className="flex-1 m-0 overflow-hidden outline-none">
-                                        <ScrollArea className={cn(
-                                            "h-full transition-colors duration-300 font-mono",
-                                            isDark ? "bg-[#0a0a0b]" : "bg-slate-900 text-slate-300"
-                                        )}>
-                                            <div className="p-4 space-y-2">
-                                                {output ? (
-                                                    <pre className={cn(
-                                                        "text-xs leading-relaxed whitespace-pre-wrap break-all",
-                                                        output.includes('[Error]') || output.includes('Standard Error') ? "text-red-400" : "text-emerald-400"
-                                                    )}>
-                                                        {output}
-                                                    </pre>
-                                                ) : (
-                                                    <div className="flex flex-col items-center justify-center opacity-20 py-8 text-center space-y-2">
-                                                        <Play size={24} />
-                                                        <p className="text-[10px] uppercase font-bold tracking-widest">Click run to see output</p>
-                                                    </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={handleToggleRecording}
+                                                className={cn(
+                                                    "h-14 w-14 rounded-full transition-all shrink-0",
+                                                    isRecording ? "bg-red-500 text-white animate-pulse hover:bg-red-600 scale-110" : "hover:bg-teal-50 hover:text-teal-600"
                                                 )}
-                                            </div>
-                                        </ScrollArea>
-                                    </TabsContent>
+                                                disabled={isTranscribing || submitting}
+                                            >
+                                                {isRecording ? <StopCircle size={24} /> : (isTranscribing ? <Loader2 size={24} className="animate-spin" /> : <Mic size={24} />)}
+                                            </Button>
 
-                                    <TabsContent value="input" className="flex-1 m-0 overflow-hidden outline-none">
-                                        <div className={cn(
-                                            "h-full p-4 flex flex-col",
-                                            isDark ? "bg-[#0a0a0b]" : "bg-slate-50"
-                                        )}>
-                                            <div className="flex items-center gap-2 mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                                <Terminal size={12} />
-                                                Standard Input (stdin)
-                                            </div>
+                                            <div className="h-8 w-px bg-border/50 mx-1" />
+
                                             <textarea
                                                 className={cn(
-                                                    "flex-1 w-full p-4 rounded-xl text-sm font-mono focus:outline-none transition-all resize-none border",
-                                                    isDark ? "bg-zinc-900 border-white/5 text-emerald-400 placeholder:text-zinc-700" : "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400"
+                                                    "flex-1 bg-transparent border-none py-4 px-4 text-lg focus:ring-0 focus:outline-none resize-none max-h-48 overflow-y-auto font-medium transition-all",
+                                                    isDark ? "text-white placeholder:text-zinc-600" : "text-slate-900 placeholder:text-slate-400"
                                                 )}
-                                                value={userInput}
-                                                onChange={(e) => setUserInput(e.target.value)}
-                                                placeholder="Provide custom input for your code execution..."
+                                                rows={1}
+                                                value={answer}
+                                                onChange={(e) => {
+                                                    setAnswer(e.target.value);
+                                                    e.target.style.height = 'auto';
+                                                    e.target.style.height = e.target.scrollHeight + 'px';
+                                                }}
+                                                placeholder={isRecording ? "Listening to your thoughts..." : "Share your detailed response here..."}
+                                                disabled={submitting || isTranscribing}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                                        e.preventDefault();
+                                                        handleSubmit(e);
+                                                    }
+                                                }}
                                             />
+
+                                            <div className="flex items-center gap-2 pr-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => setShowSkipModal(true)}
+                                                    className="h-14 w-14 rounded-full hover:bg-red-50 hover:text-red-500 text-muted-foreground/40 shrink-0"
+                                                    disabled={submitting}
+                                                >
+                                                    <XCircle size={24} />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    onClick={handleSubmit}
+                                                    disabled={!answer.trim() || submitting || isTranscribing}
+                                                    className={cn(
+                                                        "h-14 w-14 rounded-full shadow-2xl transition-all transform active:scale-90 shrink-0",
+                                                        answer.trim() ? "bg-[#4d6bfe] hover:bg-[#3b55d1] text-white" : "bg-muted text-muted-foreground"
+                                                    )}
+                                                >
+                                                    <Send size={24} className={answer.trim() ? "translate-x-0.5" : ""} />
+                                                </Button>
+                                            </div>
                                         </div>
-                                    </TabsContent>
-                                </Tabs>
-                                
-                                {/* Refactored Submit Area for IDE Mode */}
-                                <div className={cn(
-                                    "p-4 border-t flex gap-4 transition-colors duration-300 shrink-0",
-                                    isDark ? "bg-[#121214] border-white/[0.05]" : "bg-slate-50 border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]"
-                                )}>
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon" 
-                                        onClick={() => setShowSkipModal(true)}
-                                        disabled={submitting}
-                                        className="h-10 w-10 shrink-0 border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 rounded-xl"
-                                    >
-                                        <XCircle size={18} />
-                                    </Button>
-                                    <div className="relative flex-1 group">
-                                        <textarea
-                                            className={cn(
-                                                "w-full rounded-xl px-4 py-2.5 pr-12 text-sm focus:outline-none transition-all resize-none h-10 min-h-[40px] max-h-32 shadow-sm border",
-                                                isDark ? "bg-zinc-900 border-white/5 text-white placeholder:text-zinc-600 focus:border-[#4d6bfe]/50" : "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#4d6bfe]/50"
-                                            )}
-                                            value={answer}
-                                            onChange={(e) => setAnswer(e.target.value)}
-                                            placeholder="Explain your approach to submit answer..."
-                                            disabled={submitting}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey) {
-                                                    e.preventDefault();
-                                                    handleSubmit(e, `LANGUAGE: ${language}\n\nCODE:\n\`\`\`${language}\n${code}\n\`\`\`\n\nEXECUTION OUTPUT:\n${output}\n\nEXPLANATION:\n${answer}`);
-                                                }
-                                            }}
-                                        />
-                                        <Button 
-                                            size="icon" 
-                                            variant="default"
-                                            className="absolute right-1.5 bottom-1.5 h-7 w-7 rounded-lg bg-[#4d6bfe] hover:bg-[#3b55d1] text-white shadow-md transition-all active:scale-95" 
-                                            disabled={!answer.trim() || submitting}
-                                            onClick={(e) => handleSubmit(e, `LANGUAGE: ${language}\n\nCODE:\n\`\`\`${language}\n${code}\n\`\`\`\n\nEXECUTION OUTPUT:\n${output}\n\nEXPLANATION:\n${answer}`)}
-                                        >
-                                            <Send size={14} />
-                                        </Button>
+                                    </div>
+                                    <div className="flex justify-center mt-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 flex items-center gap-2">
+                                            <FlaskConical size={12} />
+                                            AI-Powered Assessment Environment
+                                        </p>
                                     </div>
                                 </div>
-                            </Panel>
-                        </Group>
-                    </Panel>
-                </Group>
+                            </div>
+                        </div>
+                    )}
+                </div>
                 ) : (
                     <ScrollArea className={cn(
                         "flex-1 overflow-y-auto px-6 py-12 transition-colors duration-300",
@@ -1214,7 +1190,7 @@ const MockInterview = () => {
                                                     </div>
                                                     <div>
                                                         <h3 className={cn("text-lg font-bold flex items-center gap-2", isDark ? "text-white" : "text-slate-900")}>
-                                                            {q.title || "Interview Case"}
+                                                            Question {idx + 1}
                                                             {isExpanded ? <ChevronUp size={16} className="text-[#4d6bfe]" /> : <ChevronDown size={16} className="text-muted-foreground opacity-30 group-hover:opacity-100 transition-opacity" />}
                                                         </h3>
                                                         <div className="flex items-center gap-3 mt-1">
@@ -1248,7 +1224,9 @@ const MockInterview = () => {
                                                         <span className="text-[10px] font-bold uppercase tracking-widest text-[#4d6bfe] opacity-60 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                                                             Details <ChevronRight size={10} />
                                                         </span>
-                                                        <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-widest border-[#4d6bfe]/20 text-[#4d6bfe]/70 bg-[#4d6bfe]/5">Coding Round</Badge>
+                                                        <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-widest border-[#4d6bfe]/20 text-[#4d6bfe]/70 bg-[#4d6bfe]/5">
+                                                            {q.type === 'Coding' ? 'Coding Round' : 'Theoretical Round'}
+                                                        </Badge>
                                                     </div>
                                                 </CardContent>
                                             ) : (

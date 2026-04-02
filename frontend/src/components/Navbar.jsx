@@ -49,18 +49,22 @@ const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-1.5 sm:gap-3">
-          <Link to="/upload" className={navLinkClass('/upload')}>
-            <Upload size={17} />
-            <span className="hidden sm:inline">Upload Resume</span>
-          </Link>
-          <Link to="/analytics" className={navLinkClass('/analytics')}>
-            <BarChart3 size={17} />
-            <span className="hidden sm:inline">Analytics</span>
-          </Link>
-          <Link to="/resume-builder" className={navLinkClass('/resume-builder')}>
-            <Layout size={17} />
-            <span className="hidden sm:inline">Resume Builder</span>
-          </Link>
+          {user?.role === 'candidate' && (
+            <>
+              <Link to="/upload" className={navLinkClass('/upload')}>
+                <Upload size={17} />
+                <span className="hidden sm:inline">Upload Resume</span>
+              </Link>
+              <Link to="/analytics" className={navLinkClass('/analytics')}>
+                <BarChart3 size={17} />
+                <span className="hidden sm:inline">Analytics</span>
+              </Link>
+              <Link to="/resume-builder" className={navLinkClass('/resume-builder')}>
+                <Layout size={17} />
+                <span className="hidden sm:inline">Resume Builder</span>
+              </Link>
+            </>
+          )}
           {user?.role === 'recruiter' && (
             <Link to="/recruiter-dashboard" className={navLinkClass('/recruiter-dashboard')}>
               <UsersRound size={17} />

@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 // Get high-level analytics for the user
 export const getAnalyticsSummary = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = (req.user.role === 'recruiter' && req.query.userId) ? req.query.userId : req.user.id;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const skip = (page - 1) * limit;
@@ -166,7 +166,7 @@ const PRACTICE_TOPICS = {
 // Get skill gap analysis: compare user per-category scores vs ideal (10/10)
 export const getSkillGap = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = (req.user.role === 'recruiter' && req.query.userId) ? req.query.userId : req.user.id;
 
     // Aggregate average score per category across all completed sessions
     const categoryScores = await Question.aggregate([
@@ -233,7 +233,7 @@ export const getSkillGap = async (req, res) => {
 // Get advanced stats: Time-series, Percentile, Velocity
 export const getAdvancedStats = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = (req.user.role === 'recruiter' && req.query.userId) ? req.query.userId : req.user.id;
 
     // 1. Time-series Progress (Last 10 completed sessions)
     const timeSeries = await Session.find({ user: userId, status: 'completed' })
