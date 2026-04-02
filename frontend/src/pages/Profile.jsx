@@ -5,8 +5,10 @@ import {
   User, Mail, Calendar, LogOut, Zap, Trophy, Target,
   Star, Flame, TrendingUp, BookOpen, ChevronRight, Award,
   GitFork, Link2, MapPin, FileText, ExternalLink, UsersRound,
-  ArrowLeft
+  ArrowLeft, X, Download, Eye
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 import ClassicTemplate from '../components/resume-templates/ClassicTemplate';
 import ModernTemplate from '../components/resume-templates/ModernTemplate';
@@ -111,6 +113,8 @@ const Profile = () => {
   const [sessions, setSessions] = useState([]);
   const [savedResume, setSavedResume] = useState(null);
   const [loading, setLoading]   = useState(true);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const resumeRef = React.useRef(null);
 
   const isViewingCandidate = Boolean(candidateIdFromState && candidateIdFromState !== user?.id);
 
@@ -164,6 +168,56 @@ const Profile = () => {
   const handleLogout = async () => {
     await logout();
     navigate('/');
+  };
+
+  const exportPDF = async () => {
+    if (!resumeRef.current) return;
+    try {
+      toast.loading('Generating PDF...', { id: 'pdf-toast' });
+      const element = resumeRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 1.35,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.82);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = 210;
+      const pgHeight = 297;
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+      let heightLeft = imgHeight - pgHeight;
+      let position = -pgHeight;
+      while (heightLeft > 2) {
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pgHeight;
+        position -= pgHeight;
+      }
+      pdf.save(`${savedResume.personalInfo?.fullName || 'Resume'}.pdf`);
+      toast.success('Resume downloaded!', { id: 'pdf-toast' });
+    } catch (error) {
+      console.error('PDF Export Error:', error);
+      toast.error('Failed to generate PDF', { id: 'pdf-toast' });
+    }
+  };
+
+  const renderSelectedTemplate = (data) => {
+    if (!data) return null;
+    const template = data.selectedTemplate || 'classic';
+    const props = { resumeData: data, sectionOrder: data.previewSectionOrder };
+    
+    switch (template) {
+      case 'modern': return <ModernTemplate {...props} />;
+      case 'professional': return <ProfessionalTemplate {...props} />;
+      case 'creative': return <CreativeTemplate {...props} />;
+      case 'elegant': return <ElegantTemplate {...props} />;
+      case 'midnight': return <MidnightTemplate {...props} />;
+      default: return <ClassicTemplate {...props} />;
+    }
   };
 
   if (loading) return <LoadingSpinner fullPage message={isViewingCandidate ? "Loading candidate profile..." : "Loading your profile..."} />;
@@ -357,7 +411,7 @@ const Profile = () => {
                   {savedResume ? (
                     <div 
                       className="relative rounded-xl border border-border/60 dark:border-zinc-800/90 bg-card dark:bg-[#0d1117] overflow-hidden group cursor-pointer shadow-sm hover:shadow-md transition-all"
-                      onClick={() => !isViewingCandidate && navigate('/resume-builder')}
+                      onClick={() => setIsPreviewOpen(true)}
                     >
                       <div className="h-[200px] w-full overflow-hidden flex justify-center bg-zinc-50 dark:bg-black/40 p-3 pt-6">
                           <div 
@@ -369,12 +423,7 @@ const Profile = () => {
                               transformOrigin: 'top center' 
                             }}
                           >
-                            {savedResume.selectedTemplate === 'classic' && <ClassicTemplate resumeData={savedResume} />}
-                            {(!savedResume.selectedTemplate || savedResume.selectedTemplate === 'modern') && <ModernTemplate resumeData={savedResume} />}
-                            {savedResume.selectedTemplate === 'professional' && <ProfessionalTemplate resumeData={savedResume} />}
-                            {savedResume.selectedTemplate === 'creative' && <CreativeTemplate resumeData={savedResume} />}
-                            {savedResume.selectedTemplate === 'elegant' && <ElegantTemplate resumeData={savedResume} />}
-                            {savedResume.selectedTemplate === 'midnight' && <MidnightTemplate resumeData={savedResume} />}
+                            {renderSelectedTemplate(savedResume)}
                           </div>
                       </div>
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all flex items-end justify-between">
@@ -598,6 +647,62 @@ const Profile = () => {
                 </div>
               )}
           </main>
+        </div>
+      </div>
+
+      {/* Live Resume Preview Modal */}
+      {isPreviewOpen && savedResume && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-slate-100 dark:bg-[#0a0a0a] w-full max-w-5xl h-full md:h-[90vh] rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-slate-200 dark:border-white/10">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-[#111] border-b border-slate-200 dark:border-white/10 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-500/10 rounded-lg">
+                  <Eye className="w-5 h-5 text-indigo-500" />
+                </div>
+                <h3 className="font-bold text-slate-900 dark:text-white">
+                  {isViewingCandidate ? "Candidate Resume Preview" : "Resume Draft Preview"}
+                </h3>
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={exportPDF}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-lg text-slate-900 dark:text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PDF
+                </button>
+                {!isViewingCandidate && (
+                  <button
+                    onClick={() => navigate('/resume-builder')}
+                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white font-semibold text-sm hover:bg-slate-50 transition-all"
+                  >
+                    Edit in Builder
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsPreviewOpen(false)}
+                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 dark:hover:text-rose-400 dark:hover:bg-rose-500/20 bg-slate-100 dark:bg-white/5 rounded-full transition-all hover:rotate-90"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body - Scaled A4 Container */}
+            <div className="flex-1 overflow-auto p-4 md:p-12 flex justify-center bg-slate-200/50 dark:bg-black/50 scrollbar-hide">
+              <div className="shadow-2xl ring-1 ring-slate-900/5 bg-white origin-top" style={{ width: '210mm', minHeight: '297mm', transform: 'scale(0.9)', transformOrigin: 'top center', marginBottom: '-10%' }}>
+                {renderSelectedTemplate(savedResume)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden Preview Area for PDF Export */}
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+        <div ref={resumeRef}>
+          {renderSelectedTemplate(savedResume)}
         </div>
       </div>
     </div>

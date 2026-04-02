@@ -7,40 +7,57 @@
 ## ✨ Key Features
 
 ### 🎙️ AI-Powered Mock Interviews
-- **Real-Time Streaming**: Experience fluid, low-latency interactions powered by **Server-Sent Events (SSE)** for instant AI feedback and question generation.
-- **Peer-to-Peer Interview Matching**: connect with other candidates for live mock sessions to improve communication and behavioral skills.
-- **Infinite Social Proof Marquee**: A sleek, auto-scrolling display of top companies utilizing high-fidelity fade masks and interactive hover states.
+- **Real-Time Streaming**: Experience fluid, low-latency interactions powered by **Server-Sent Events (SSE)** for instant AI feedback.
+- **Peer-to-Peer Interview Matching**: Connect with other candidates for live mock sessions to improve behavioral skills.
+- **Infinite Social Proof Marquee**: A sleek, auto-scrolling display of top companies with interactive hover states.
 
 ### 📄 Intelligent Resume Alignment
-- **Resume Parsing**: Strategic analysis of PDF/DOCX resumes to generate questions that probe your specific experience and projects.
+- **Resume Parsing**: Strategic analysis of PDF/DOCX resumes to generate targeted questions.
 - **Skill Gap Analysis**: AI identifies areas for improvement based on your resume versus target job descriptions.
+- **Instant Preview Modal**: High-fidelity modal on the **Profile page** for effortless draft viewing, role-based controls for recruiters, and direct PDF downloads.
 
 ### 🧩 Smart Resume Builder
-- **Multi-Template Resume Engine**: Build and preview resumes with Classic, Modern, Professional, Creative, Elegant, and Midnight templates.
-- **Unlimited Custom Sections**: Add manual sections for Certifications, Awards, volunteering, or anything else you need.
-- **Interactive Section Sequencing**: Control preview section order from the modal using checkbox-based sequence selection while keeping core identity blocks stable.
-- **Draft Persistence**: Save and restore both selected template and preview section order across sessions.
-- **ATS + Editing Workspace**: Scroll-friendly right sidebar with section navigator and ATS analysis for long-form resume editing.
-- **Import Feedback UX**: Imported resume filename is displayed with clear visual feedback after each upload.
+- **Multi-Template Engine**: Build and preview resumes with Classic, Modern, Professional, Creative, Elegant, and Midnight templates.
+- **Interactive Section Sequencing**: Control preview section order directly from the modal.
+- **Sync with System**: Fully integrated with the high-performance **Settings page** for real-time theme and interface updates.
 
 ### 💻 Professional Code Playground (IDE)
-- **Edge-to-Edge IDE**: A distraction-free, 0-100% **resizable three-panel layout** featuring Problem Descriptions, Monaco Editor, and AI Discussion.
-- **Multi-Language Support**: Robust execution for Python, JavaScript, Java, C++, and more.
-- **Real-Time Execution**: Instantly run code and view outputs via the integrated **Judge0 API**.
-- **Thematic Precision**: Beautifully styled code environment with active line highlighting and theme-aware aesthetics.
+- **Edge-to-Edge IDE**: A distraction-free, resizable three-panel layout featuring Problem Descriptions, Monaco Editor, and AI Discussion.
+- **Multi-Language Support**: Robust execution for Python, JavaScript, Java, C++, and more via the **Judge0 API**.
 
 ### 📊 Advanced Performance Analytics
-- **Smart History Sorting**: Toggle between **"Latest"** and **"Top Scores"** globally to track your evolution or reflect on your best-of performances.
-- **Expandable Response Viewer**: implemented with smart overflow detection, gradient-fade transitions, and a clean "Show More/Less" toggle for long user answers.
-- **Expandable Performance Cards**: Deep-dive into each response with a sleek, one-at-a-time expandable UI for detailed communication and technical scoring.
-- **Synchronized Global Timer**: An accurate, session-wide timer that manages interview pacing and handles time penalties dynamically.
-- **Progress Visualization**: Track your preparation journey with interactive Radar and Line charts on your personalized dashboard.
+- **Smart History Sorting**: Toggle between **"Latest"** and **"Top Scores"** globally.
+- **Expandable Response Viewer**: implemented with gradient-fade transitions and overflow detection.
+- **Progress Visualization**: Track your journey with interactive charts on your personalized dashboard.
 
-### 🌓 Premium User Experience
-- **Dismissible Feature Carousels**: High-fidelity, floating ad systems for new features with session-based persistence and glassmorphic icons.
-- **Distraction-Free Mode**: Global Navbar auto-hiding for deep interview focus and immersive full-screen sessions.
-- **Modern UI Suite**: Built with **Tailwind CSS**, **Radix UI**, and **Lucide React** for a sleek, high-performance interface.
-- **Glassmorphic Design**: Subtle micro-animations, smooth transitions, and a premium dark/light mode experience.
+---
+
+## 📂 Project Structure
+
+```text
+.
+├── backend/                # Node.js / Express.js Server
+│   ├── config/             # Database connection & Auth configuration
+│   ├── controllers/        # Request handling logic (Auth, Resume, Analytics, etc.)
+│   ├── models/             # Mongoose schemas (User, Resume, Interview Session)
+│   ├── routes/             # API endpoint definitions
+│   ├── services/           # AI integrations (Gemini, Judge0) & external APIs
+│   ├── middleware/         # Auth guards & error handling
+│   ├── uploads/            # Temporary directory for file processing
+│   └── server.js           # Server initialization
+├── frontend/               # React SPA (Vite)
+│   ├── src/
+│   │   ├── api/            # Axios client & global API abstraction
+│   │   ├── components/     # UI components & resume layout templates
+│   │   ├── context/        # Global state (Auth, Theme, Navigation)
+│   │   ├── pages/          # Full-page views (Dashboard, Profile, Builder, etc.)
+│   │   ├── hooks/          # Custom React hooks (Intersection observers, timers)
+│   │   ├── lib/            # Internal utilities & helper functions
+│   │   └── App.jsx         # Routing & application entry
+│   ├── tailwind.config.js  # Styling & design system tokens
+│   └── package.json        # Frontend dependencies
+└── README.md
+```
 
 ---
 
@@ -48,20 +65,16 @@
 
 ### Frontend
 - **Framework**: [React 18](https://reactjs.org/) (Vite)
-- **State Management**: React Context API
-- **UI Components**: [shadcn/ui](https://ui.shadcn.com/) (Radix UI & Tailwind CSS)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/)
 - **IDE Engine**: [Monaco Editor](https://microsoft.github.io/monaco-editor/)
-- **Layout**: [React Resizable Panels](https://github.com/bvaughn/react-resizable-panels)
-- **Visualizations**: [Recharts](https://recharts.org/)
+- **Visualizations**: [Recharts](https://recharts.org/), [Chart.js](https://www.chartjs.org/)
 - **Icons**: [Lucide React](https://lucide.dev/)
-- **Audio Logic**: Custom Web Audio API wrappers with Deepgram integration
 
 ### Backend
-- **Runtime**: [Node.js](https://nodejs.org/) with [Express.js](https://expressjs.com/)
+- **Runtime**: [Node.js](https://nodejs.org/), [Express.js](https://expressjs.com/)
 - **Database**: [MongoDB](https://www.mongodb.com/) (Mongoose)
 - **AI Engine**: [Google Gemini AI](https://ai.google.dev/) & [OpenAI](https://openai.com/)
-- **Streaming**: Server-Sent Events (SSE) for real-time evaluation
-- **Authentication**: JWT (Stateless) & Google OAuth 2.0
+- **Authentication**: JWT & Google OAuth 2.0
 - **Transcription**: [Deepgram API](https://deepgram.com/)
 - **Execution**: [Judge0 API](https://judge0.com/)
 
@@ -72,11 +85,7 @@
 ### Prerequisites
 - **Node.js** (v18+)
 - **MongoDB** instance (Local or Atlas)
-- **API Keys**:
-  - `GEMINI_API_KEY` (Google AI)
-  - `DEEPGRAM_API_KEY` (Transcription)
-  - `JUDGE0_KEY` (RapidAPI - Code Execution)
-  - `GOOGLE_CLIENT_ID` (OAuth)
+- **API Keys**: `GEMINI_API_KEY`, `DEEPGRAM_API_KEY`, `JUDGE0_KEY`, `GOOGLE_CLIENT_ID`
 
 ### Installation
 
@@ -88,26 +97,24 @@
 
 2. **Install dependencies:**
    ```bash
-   # Root
    npm install
-   # Backend
    cd backend && npm install
-   # Frontend
    cd ../frontend && npm install
    ```
+
+3. **Environment Setup:**
+   Create a `.env` file in the `backend` directory based on `.env.example`.
 
 ### Execution
 
 1. **Start Backend:**
    ```bash
-   cd backend
-   npm run dev
+   cd backend && npm run dev
    ```
 
 2. **Start Frontend:**
    ```bash
-   cd frontend
-   npm run dev
+   cd frontend && npm run dev
    ```
 
 The app will launch at `http://localhost:5173`.

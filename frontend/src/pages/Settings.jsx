@@ -91,10 +91,10 @@ const Settings = () => {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-full transition-all duration-300 group ${
                     activeTab === item.id
-                      ? 'bg-primary/10 text-primary dark:bg-teal-500/10 dark:text-teal-300 border-l-2 border-primary'
-                      : 'text-muted-foreground dark:text-zinc-400 hover:bg-muted hover:text-foreground dark:hover:bg-zinc-900/60 dark:hover:text-zinc-100'
+                      ? 'bg-primary/10 text-primary dark:bg-teal-500/10 dark:text-teal-300 border-l-4 border-primary shadow-sm translate-x-1'
+                      : 'text-muted-foreground dark:text-zinc-400 hover:bg-muted/80 hover:text-foreground dark:hover:bg-zinc-900/40 hover:pl-6'
                   }`}
                 >
                   {item.icon}
@@ -125,10 +125,10 @@ const Settings = () => {
                       <button
                         key={t.id}
                         onClick={() => setTheme(t.id)}
-                        className={`group relative flex flex-col gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                        className={`group relative flex flex-col gap-3 p-4 rounded-xl border-2 text-left transition-all duration-300 ${
                           theme === t.id
-                            ? 'border-primary ring-2 ring-primary/10 bg-primary/[0.02] dark:bg-teal-500/5'
-                            : 'border-border dark:border-zinc-800/90 bg-card dark:bg-[#0d1117] hover:border-foreground/20 dark:hover:border-zinc-700'
+                            ? 'border-primary ring-2 ring-primary/10 bg-primary/[0.02] dark:bg-teal-500/5 shadow-md -translate-y-1'
+                            : 'border-border dark:border-zinc-800/90 bg-card dark:bg-[#0d1117] hover:border-primary/40 dark:hover:border-teal-500/40 hover:shadow-lg hover:-translate-y-1'
                         }`}
                       >
                         <div className="flex items-center justify-between">
