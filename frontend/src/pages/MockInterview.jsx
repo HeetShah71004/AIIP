@@ -114,6 +114,7 @@ const MockInterview = () => {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
     const scrollAreaRef = useRef(null);
+    const textareaRef = useRef(null);
     const splitPaneRef = useRef(null);
     const leftPaneRef = useRef(null);
     const rightPaneRef = useRef(null);
@@ -310,6 +311,10 @@ const MockInterview = () => {
                 setAnswer('');
                 setOutput('');
                 setUserInput('');
+                // Reset textarea height for conversational rounds
+                if (textareaRef.current) {
+                    textareaRef.current.style.height = 'auto';
+                }
             }
         }
     }, [currentQuestionIndex, questions, session?.interviewRound]);
@@ -1075,8 +1080,9 @@ const MockInterview = () => {
                                 {/* Unified Input Bar (Theoretical Mode) */}
                                 <div className="animate-in slide-in-from-bottom-8 duration-700">
                                     <div className={cn(
-                                        "p-2 rounded-[2.5rem] shadow-2xl transition-all border group focus-within:ring-4 focus-within:ring-[#4d6bfe]/10",
-                                        isDark ? "bg-[#18181b]/90 border-white/5" : "bg-white border-slate-200"
+                                        "p-2 rounded-[2.5rem] shadow-2xl transition-all duration-500 border group",
+                                        "shadow-[0_0_25px_-5px_rgba(77,107,254,0.05)] focus-within:shadow-[0_0_50px_-12px_rgba(77,107,254,0.3)]",
+                                        isDark ? "bg-[#18181b]/90 border-white/5 focus-within:border-[#4d6bfe]/40" : "bg-white border-slate-200 focus-within:border-[#4d6bfe]/30"
                                     )}>
                                         <div className="flex items-center gap-2">
                                             <Button
@@ -1095,8 +1101,10 @@ const MockInterview = () => {
                                             <div className="h-8 w-px bg-border/50 mx-1" />
 
                                             <textarea
+                                                ref={textareaRef}
                                                 className={cn(
-                                                    "flex-1 bg-transparent border-none py-4 px-4 text-lg focus:ring-0 focus:outline-none resize-none max-h-48 overflow-y-auto font-medium transition-all",
+                                                    "flex-1 bg-transparent border-none py-4 px-4 text-lg focus:ring-0 focus:outline-none resize-none max-h-72 font-medium transition-all duration-300",
+                                                    "scrollbar-thin scrollbar-thumb-[#4d6bfe]/20 scrollbar-track-transparent hover:scrollbar-thumb-[#4d6bfe]/40",
                                                     isDark ? "text-white placeholder:text-zinc-600" : "text-slate-900 placeholder:text-slate-400"
                                                 )}
                                                 rows={1}
@@ -1120,22 +1128,42 @@ const MockInterview = () => {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    onClick={() => setShowSkipModal(true)}
-                                                    className="h-14 w-14 rounded-full hover:bg-red-50 hover:text-red-500 text-muted-foreground/40 shrink-0"
+                                                    onClick={() => {
+                                                        if (answer.length > 0) {
+                                                            setAnswer('');
+                                                            const textarea = document.querySelector('textarea');
+                                                            if (textarea) textarea.style.height = 'auto';
+                                                        } else {
+                                                            setShowSkipModal(true);
+                                                        }
+                                                    }}
+                                                    className={cn(
+                                                        "h-14 w-14 rounded-full transition-all shrink-0 animate-in fade-in zoom-in duration-300",
+                                                        answer.length > 0 
+                                                            ? "hover:bg-red-50 hover:text-red-500 text-muted-foreground/30" 
+                                                            : "hover:bg-muted text-muted-foreground/30"
+                                                    )}
                                                     disabled={submitting}
+                                                    title={answer.length > 0 ? "Clear Answer" : "Skip Question"}
                                                 >
-                                                    <XCircle size={24} />
+                                                    <XCircle size={22} />
                                                 </Button>
                                                 <Button
                                                     size="icon"
                                                     onClick={handleSubmit}
-                                                    disabled={!answer.trim() || submitting || isTranscribing}
+                                                    disabled={(!answer.trim() && !isRecording) || submitting || isTranscribing}
                                                     className={cn(
-                                                        "h-14 w-14 rounded-full shadow-2xl transition-all transform active:scale-90 shrink-0",
-                                                        answer.trim() ? "bg-[#4d6bfe] hover:bg-[#3b55d1] text-white" : "bg-muted text-muted-foreground"
+                                                        "h-14 w-14 rounded-full shadow-2xl transition-all duration-300 transform active:scale-95 shrink-0",
+                                                        (answer.trim() || isRecording) && !submitting
+                                                            ? "bg-gradient-to-tr from-[#4d6bfe] to-[#3b55d1] hover:shadow-[#4d6bfe]/40 text-white hover:scale-105" 
+                                                            : (isDark ? "bg-[#1e1e20] text-zinc-700" : "bg-slate-100 text-slate-300")
                                                     )}
                                                 >
-                                                    <Send size={24} className={answer.trim() ? "translate-x-0.5" : ""} />
+                                                    {submitting ? (
+                                                        <Loader2 size={24} className="animate-spin" />
+                                                    ) : (
+                                                        <Send size={24} className={answer.trim() ? "translate-x-0.5 transition-transform" : ""} />
+                                                    )}
                                                 </Button>
                                             </div>
                                         </div>
