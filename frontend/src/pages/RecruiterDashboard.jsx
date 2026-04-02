@@ -61,6 +61,7 @@ const RecruiterDashboard = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Schedule Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -181,6 +182,13 @@ const RecruiterDashboard = () => {
     (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
     (c.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const filteredEmailSuggestions = inviteEmail.length > 0
+    ? candidates.filter(c => 
+        c.email.toLowerCase().startsWith(inviteEmail.toLowerCase()) && 
+        c.email.toLowerCase() !== inviteEmail.toLowerCase()
+      ).slice(0, 5)
+    : [];
 
   const getScoreBadge = (score) => {
     if (score >= 8) return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Elite</Badge>;
@@ -320,15 +328,18 @@ const RecruiterDashboard = () => {
                 filteredCandidates.map((candidate) => (
                   <TableRow key={candidate._id} className="group hover:bg-teal-50/30 dark:hover:bg-teal-500/5 transition-colors border-border/40">
                     <TableCell className="pl-8 py-5">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12 border-2 border-background shadow-lg ring-1 ring-border/50 group-hover:scale-105 transition-transform">
+                      <div 
+                        className="flex items-center gap-4 cursor-pointer group/item"
+                        onClick={() => navigate('/profile', { state: { candidateId: candidate._id } })}
+                      >
+                        <Avatar className="h-12 w-12 border-2 border-background shadow-lg ring-1 ring-border/50 group-hover:scale-110 transition-transform duration-300">
                           <AvatarImage src={candidate.avatar} />
                           <AvatarFallback className="bg-teal-100 text-teal-800 font-black text-lg">
                             {(candidate.name || 'C').charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col space-y-0.5">
-                          <span className="font-bold text-base text-foreground group-hover:text-teal-600 transition-colors tracking-tight">
+                          <span className="font-bold text-base text-foreground group-hover/item:text-teal-600 transition-colors tracking-tight">
                             {candidate.name}
                           </span>
                           <span className="text-xs text-muted-foreground font-semibold font-mono tracking-tighter opacity-70 italic">{candidate.email}</span>
@@ -414,17 +425,53 @@ const RecruiterDashboard = () => {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleInvite} className="p-8 pt-6 space-y-6">
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <Label htmlFor="email" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Candidate Email</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="candidate@example.com"
                 value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
+                onChange={(e) => {
+                  setInviteEmail(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 className="h-12 bg-muted/30 border-none focus:ring-2 focus:ring-teal-500 rounded-xl font-bold"
                 required
+                autoComplete="off"
               />
+              
+              {showSuggestions && filteredEmailSuggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border border-border/50 rounded-xl shadow-2xl overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200">
+                  {filteredEmailSuggestions.map((candidate) => (
+                    <button
+                      key={candidate._id}
+                      type="button"
+                      onClick={() => {
+                        setInviteEmail(candidate.email);
+                        setShowSuggestions(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-teal-50 dark:hover:bg-teal-500/10 transition-colors group"
+                    >
+                      <Avatar className="h-8 w-8 border border-border/50">
+                        <AvatarImage src={candidate.avatar} />
+                        <AvatarFallback className="text-[10px] bg-teal-100 text-teal-800 font-bold">
+                          {(candidate.name || 'C').charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-bold truncate group-hover:text-teal-600 transition-colors">
+                          {candidate.name}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground truncate italic">
+                          {candidate.email}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="message" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Personal Message (Optional)</Label>
