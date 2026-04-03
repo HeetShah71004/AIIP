@@ -425,3 +425,44 @@ export const sendScheduleEmail = async ({ to, recruiterName, date, time, message
     return { status: 'failed', sent: false, message: error.message || 'Failed to send schedule email.' };
   }
 };
+export const sendContactFormEmail = async ({ name, email, message }) => {
+  const transporter = createTransporter();
+  if (!transporter) {
+    return { status: 'skipped', sent: false, message: 'SMTP is not configured on server.' };
+  }
+
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
+  const supportEmail = 'intervaiplatform@gmail.com';
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+      <h2 style="color: #0d9488; margin-bottom: 20px;">New Contact Form Submission</h2>
+      <p style="font-size: 16px;">You have received a new message from the contact form:</p>
+      
+      <div style="margin: 20px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <p style="margin: 0 0 10px;"><strong>Name:</strong> ${name}</p>
+        <p style="margin: 0 0 10px;"><strong>Email:</strong> ${email}</p>
+        <p style="margin: 15px 0 0; white-space: pre-wrap;"><strong>Message:</strong><br/>${message}</p>
+      </div>
+
+      <p style="font-size: 13px; color: #64748b; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+        This email was sent from the Interv AI Landing Page Contact Form.
+      </p>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from,
+      to: supportEmail,
+      replyTo: email,
+      subject: `Contact Form: ${name}`,
+      html
+    });
+
+    return { status: 'sent', sent: true, message: 'Contact form email sent successfully.' };
+  } catch (error) {
+    console.error('Email Error:', error);
+    return { status: 'failed', sent: false, message: error.message || 'Failed to send contact email.' };
+  }
+};

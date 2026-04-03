@@ -28,6 +28,8 @@ import speech from './routes/speechRoutes.js';
 import emotion from './routes/emotionRoutes.js';
 import performance from './routes/performanceRoutes.js';
 
+import contact from './routes/contactRoutes.js';
+
 // Mount routers
 app.use('/api/v1/auth', auth);
 app.use('/api/v1/resume', resume);
@@ -38,6 +40,7 @@ app.use('/api/v1/code', code);
 app.use('/api/v1/speech', speech);
 app.use('/api/v1/emotion', emotion);
 app.use('/api/v1/performance', performance);
+app.use('/api/v1/contact', contact);
 
 app.use(errorHandler);
 

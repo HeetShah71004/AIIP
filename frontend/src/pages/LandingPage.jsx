@@ -5,8 +5,9 @@ import MockChat from '../components/landing/MockChat';
 import SocialProof from '../components/landing/SocialProof';
 import Features from '../components/landing/Features';
 import HowItWorks from '../components/landing/HowItWorks';
-import Pricing from '../components/landing/Pricing';
-import CTA from '../components/landing/CTA';
+import CareerPreparation from '../components/landing/CareerPreparation';
+import Blog from '../components/landing/Blog';
+import ContactUs from '../components/landing/ContactUs';
 import LandingFooter from '../components/landing/LandingFooter';
 import AuthModal from '../components/landing/AuthModal';
 
@@ -25,9 +26,10 @@ const LandingPage = () => {
         <MockChat />
         <SocialProof />
         <HowItWorks />
-        <Pricing onSignup={openSignup} />
         <Features />
-        <CTA onSignup={openSignup} />
+        <CareerPreparation />
+        <Blog />
+        <ContactUs />
       </main>
       <LandingFooter />
       <AuthModal 

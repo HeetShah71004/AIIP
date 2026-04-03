@@ -70,7 +70,7 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
               onClick={() => setFormData({ ...formData, role: 'candidate' })}
               className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
                 formData.role === 'candidate' 
-                ? 'bg-primary/10 border-primary text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)]' 
+                ? 'bg-primary/10 border-primary text-primary' 
                 : 'bg-foreground/[0.03] border-border text-muted-foreground hover:bg-foreground/[0.06]'
               }`}
             >
@@ -84,7 +84,7 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
               onClick={() => setFormData({ ...formData, role: 'recruiter' })}
               className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
                 formData.role === 'recruiter' 
-                ? 'bg-primary/10 border-primary text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)]' 
+                ? 'bg-primary/10 border-primary text-primary' 
                 : 'bg-foreground/[0.03] border-border text-muted-foreground hover:bg-foreground/[0.06]'
               }`}
             >
@@ -142,11 +142,11 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
             </button>
           </div>
         </div>
-        <Button 
-          type="submit" 
-          className="w-full h-13 text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 transition-all duration-300 rounded-xl mt-4 shadow-xl active:scale-[0.98]" 
-          disabled={loading}
-        >
+          <Button 
+            type="submit" 
+            className="w-full h-13 text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 transition-all duration-300 rounded-xl mt-4 active:scale-[0.98]" 
+            disabled={loading}
+          >
           {loading ? <LoadingSpinner size={20} message={null} /> : 'Get Started'}
         </Button>
       </form>

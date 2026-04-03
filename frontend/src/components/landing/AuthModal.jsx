@@ -15,8 +15,8 @@ const AuthModal = ({ isOpen, onClose, view = 'login' }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[440px] bg-background border-border p-10 rounded-[32px] overflow-hidden shadow-2xl ring-1 ring-border transition-colors duration-300">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+      <DialogContent className="sm:max-w-[440px] bg-background border-border p-10 rounded-[32px] overflow-hidden shadow-none ring-1 ring-border transition-colors duration-300">
+        {/* Decorative shadow line removed */}
         {currentView === 'login' ? (
           <LoginForm 
             onSuccess={(userData) => {

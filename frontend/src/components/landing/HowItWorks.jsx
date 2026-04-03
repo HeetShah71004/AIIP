@@ -53,7 +53,7 @@ const HowItWorks = () => {
               </div>
               
               <div className="flex flex-col gap-3">
-                <h3 className="text-xl font-bold tracking-tight text-foreground">
+                <h3 className="text-xl font-bold tracking-tight text-foreground transition-colors duration-300 group-hover:text-[#14b8a6]">
                   {step.title}
                 </h3>
                 <p className="text-[0.925rem] leading-relaxed text-muted-foreground font-light">

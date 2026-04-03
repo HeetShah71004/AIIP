@@ -52,7 +52,7 @@ const Features = () => {
               <div className="w-14 h-14 rounded-2xl bg-primary/5 dark:bg-primary/10 flex items-center justify-center text-[#14b8a6] dark:text-[#14b8a6] mb-6 group-hover:scale-110 transition-transform duration-500 border border-border/50">
                 {f.icon}
               </div>
-              <h3 className="text-xl font-bold mb-3 text-foreground">{f.title}</h3>
+              <h3 className="text-xl font-bold mb-3 text-foreground transition-colors duration-300 group-hover:text-[#14b8a6]">{f.title}</h3>
               <p className="text-muted-foreground leading-relaxed font-light">
                 {f.description}
               </p>
