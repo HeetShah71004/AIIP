@@ -30,6 +30,11 @@
 - **Expandable Response Viewer**: implemented with gradient-fade transitions and overflow detection.
 - **Progress Visualization**: Track your journey with interactive charts on your personalized dashboard.
 
+### 📧 Integrated Contact System
+- **Direct Support Connect**: Functional contact form linked to `intervaiplatform@gmail.com`.
+- **Nodemailer Backend**: Robust email delivery system with custom HTML templates and Reply-To support.
+- **Micro-Animated UI**: Interactive "Send Message" button with smart hover states and loading transitions.
+
 ---
 
 ## 📂 Project Structure
@@ -76,6 +81,7 @@
 - **AI Engine**: [Google Gemini AI](https://ai.google.dev/) & [OpenAI](https://openai.com/)
 - **Authentication**: JWT & Google OAuth 2.0
 - **Transcription**: [Deepgram API](https://deepgram.com/)
+- **Email Delivery**: [Nodemailer](https://nodemailer.com/)
 - **Execution**: [Judge0 API](https://judge0.com/)
 
 ---
@@ -86,6 +92,7 @@
 - **Node.js** (v18+)
 - **MongoDB** instance (Local or Atlas)
 - **API Keys**: `GEMINI_API_KEY`, `DEEPGRAM_API_KEY`, `JUDGE0_KEY`, `GOOGLE_CLIENT_ID`
+- **SMTP Setup**: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` (for Contact Form)
 
 ### Installation
 
