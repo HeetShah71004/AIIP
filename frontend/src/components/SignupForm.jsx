@@ -49,8 +49,8 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
   };
 
   return (
-    <div className="space-y-8 w-full max-w-sm mx-auto py-2">
-      <div className="space-y-3 text-center">
+    <div className="space-y-6 w-full max-w-sm mx-auto py-1">
+      <div className="space-y-2 text-center">
         <h2 className="text-3xl font-bold tracking-tight text-foreground">Create account</h2>
         <p className="text-sm text-muted-foreground font-light">Join 10k+ users preparing today</p>
       </div>
@@ -61,8 +61,8 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
           <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">I am a</Label>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -96,7 +96,7 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label htmlFor="modal-signup-name" className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Full Name</Label>
           <Input
             id="modal-signup-name"
@@ -108,7 +108,7 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
             className="bg-foreground/[0.05] border-border text-foreground placeholder:text-muted-foreground/30 h-13 rounded-xl focus:ring-primary/30 focus:border-primary transition-all duration-300"
           />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label htmlFor="modal-signup-email" className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Email Address</Label>
           <Input
             id="modal-signup-email"
@@ -120,7 +120,7 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
             className="bg-foreground/[0.05] border-border text-foreground placeholder:text-muted-foreground/30 h-13 rounded-xl focus:ring-primary/30 focus:border-primary transition-all duration-300"
           />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label htmlFor="modal-signup-password" name="password" className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Password</Label>
           <div className="relative">
             <Input
@@ -151,7 +151,7 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
         </Button>
       </form>
 
-      <div className="relative flex items-center gap-4 py-2">
+      <div className="relative flex items-center gap-3 py-1">
         <div className="h-px w-full bg-border"></div>
         <span className="text-[9px] text-muted-foreground/30 font-bold uppercase tracking-[0.3em] whitespace-nowrap">Join with</span>
         <div className="h-px w-full bg-border"></div>
@@ -171,7 +171,7 @@ const SignupForm = ({ onSuccess, onSwitchToLogin }) => {
         </div>
       </div>
 
-      <p className="text-center text-xs text-muted-foreground leading-loose">
+      <p className="text-center text-xs text-muted-foreground leading-normal">
         Already a member?{" "}
         <button 
           onClick={onSwitchToLogin}

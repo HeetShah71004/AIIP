@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import ThemeToggle from '../ThemeToggle';
 
 const LandingNavbar = ({ onLogin, onSignup }) => {
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   const handleLogoClick = (e) => {
     if (window.location.pathname === '/') {
       e.preventDefault();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleNavClick = (e, href) => {
+    if (!href?.startsWith('#')) return;
+    e.preventDefault();
+    const section = document.querySelector(href);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.history.replaceState(null, '', href);
     }
   };
 
@@ -29,12 +29,12 @@ const LandingNavbar = ({ onLogin, onSignup }) => {
   ];
 
   return (
-    <nav 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'py-3 backdrop-blur-md bg-white/85 dark:bg-black/50 border-b border-black/5 dark:border-white/[0.08] shadow-sm' : 'py-6 bg-transparent'
-      }`}
+    <nav
+      className="sticky top-0 z-50 pointer-events-none"
     >
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+      <div
+        className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-10 py-3 bg-background pointer-events-auto border-b border-border/70"
+      >
         {/* Logo */}
         <Link 
           to="/" 
@@ -48,12 +48,13 @@ const LandingNavbar = ({ onLogin, onSignup }) => {
         </Link>
 
         {/* Nav Links */}
-        <div className="hidden md:flex items-center gap-10">
+        <div className="hidden md:flex items-center gap-7 lg:gap-9">
           {navLinks.map((link) => (
             <a 
               key={link.label}
               href={link.href} 
-              className="relative group py-2 text-sm font-semibold text-foreground/70 hover:text-[#10b981] transition-all duration-300"
+              onClick={(e) => handleNavClick(e, link.href)}
+              className="relative group py-2 text-sm font-semibold text-foreground/80 hover:text-[#10b981] transition-all duration-300"
             >
               <span>{link.label}</span>
               <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-[#10b981] scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out" />
@@ -62,17 +63,17 @@ const LandingNavbar = ({ onLogin, onSignup }) => {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-5">
           <ThemeToggle />
           <button 
             onClick={onLogin}
-            className="text-sm font-semibold text-foreground/70 hover:text-foreground transition-colors"
+            className="text-sm font-semibold text-foreground/80 hover:text-foreground transition-colors"
           >
             Log in
           </button>
           <button 
             onClick={onSignup}
-            className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full text-sm font-bold hover:opacity-90 transition-all duration-300 active:scale-95"
+            className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full text-sm font-bold shadow-[0_8px_20px_rgba(2,6,23,0.20)] hover:brightness-110 hover:-translate-y-[1px] transition-all duration-300 active:scale-95"
           >
             Get started
           </button>

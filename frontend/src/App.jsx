@@ -16,12 +16,14 @@ import LandingPage from './pages/LandingPage';
 import Settings from './pages/Settings';
 import CodePlayground from './pages/CodePlayground';
 import Navbar from './components/Navbar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import './index.css';
 import ConversationalInterview from './pages/ConversationalInterview';
 import Gamification from './pages/Gamification';
 import ResumeBuilder from './pages/ResumeBuilder';
 import PeerInterview from './pages/PeerInterview';
 import RecruiterDashboard from './pages/RecruiterDashboard';
+import LearningRoadmap from './pages/LearningRoadmap';
 
 const AppContent = () => {
   const location = useLocation();
@@ -31,7 +33,7 @@ const AppContent = () => {
   const isResumeBuilder = location.pathname === '/resume-builder';
 
   return (
-    <>
+    <ScrollArea className="h-screen w-full">
       {!(isInterviewPage || isPlaygroundPage || isConversationalPage || isResumeBuilder) && <Navbar />}
       <main className="min-h-screen">
         <Routes>
@@ -148,6 +150,14 @@ const AppContent = () => {
             }
           />
           <Route
+            path="/learning-roadmap"
+            element={
+              <ProtectedRoute allowedRoles={['candidate']}>
+                <LearningRoadmap />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/recruiter-dashboard"
             element={
               <ProtectedRoute allowedRoles={['recruiter']}>
@@ -157,7 +167,7 @@ const AppContent = () => {
           />
         </Routes>
       </main>
-    </>
+    </ScrollArea>
   );
 };
 

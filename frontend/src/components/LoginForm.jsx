@@ -70,8 +70,8 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
   };
 
   return (
-    <div className="space-y-8 w-full max-w-sm mx-auto py-2">
-      <div className="space-y-3 text-center">
+    <div className="space-y-6 w-full max-w-sm mx-auto py-1">
+      <div className="space-y-2 text-center">
         <h2 className="text-3xl font-bold tracking-tight text-foreground">Welcome back</h2>
         <p className="text-sm text-muted-foreground font-light">Access your Interv AI dashboard</p>
       </div>
@@ -82,8 +82,8 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
           <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Login as</Label>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -117,7 +117,7 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label htmlFor="modal-email" className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Email Address</Label>
           <Input
             id="modal-email"
@@ -129,7 +129,7 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
             className="bg-foreground/[0.05] border-border text-foreground placeholder:text-muted-foreground/30 h-13 rounded-xl focus:ring-primary/30 focus:border-primary transition-all duration-300"
           />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between px-1">
             <Label htmlFor="modal-password" name="password" className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Password</Label>
             <button type="button" className="text-[10px] font-bold text-primary hover:opacity-80 transition-colors">Forgot password?</button>
@@ -163,7 +163,7 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
         </Button>
       </form>
 
-      <div className="relative flex items-center gap-4">
+      <div className="relative flex items-center gap-3">
         <div className="h-px w-full bg-border"></div>
         <span className="text-[9px] text-muted-foreground/30 font-bold uppercase tracking-[0.3em] whitespace-nowrap">Secure Login</span>
         <div className="h-px w-full bg-border"></div>
@@ -183,7 +183,7 @@ const LoginForm = ({ onSuccess, onSwitchToSignup }) => {
         </div>
       </div>
 
-      <p className="text-center text-xs text-muted-foreground leading-loose">
+      <p className="text-center text-xs text-muted-foreground leading-normal">
         New to Interv AI?{" "}
         <button 
           onClick={onSwitchToSignup}

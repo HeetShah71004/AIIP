@@ -5,7 +5,8 @@ import {
   getAdvancedStats,
   getRecruiterStats,
   getTopCandidates,
-  exportRecruiterReport
+  exportRecruiterReport,
+  getCandidateAIReport
 } from '../controllers/analyticsController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -19,6 +20,7 @@ router.get('/advanced-stats', protect, getAdvancedStats);
 router.get('/recruiter/stats', protect, getRecruiterStats);
 router.get('/recruiter/top-candidates', protect, getTopCandidates);
 router.get('/recruiter/export', protect, exportRecruiterReport);
+router.get('/recruiter/candidate-report/:candidateId', protect, getCandidateAIReport);
 
 export default router;
 

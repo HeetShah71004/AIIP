@@ -200,9 +200,9 @@ const Dashboard = () => {
                     <div
                       key={s._id}
                       onClick={() => navigate(`/feedback/${s._id}`)}
-                      className="flex justify-between items-center p-6 hover:bg-card dark:hover:bg-zinc-900/70 hover:shadow-2xl hover:shadow-primary/10 cursor-pointer transition-all duration-300 group relative overflow-hidden hover:-translate-y-1 z-10"
+                      className="flex justify-between items-center p-6 hover:bg-muted/20 dark:hover:bg-zinc-900/45 cursor-pointer transition-colors duration-200 group relative"
                     >
-                      <div className="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-primary to-primary/50 scale-y-0 group-hover:scale-y-100 transition-transform duration-500 origin-center" />
+                      <div className="absolute left-0 top-0 h-full w-1 bg-primary/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                       <div className="space-y-1">
                         <p className="font-semibold group-hover:text-primary dark:text-zinc-100 transition-colors line-clamp-1">
                           {formatJobTitle(s)}
@@ -216,7 +216,7 @@ const Dashboard = () => {
                       </div>
                       <div className="flex items-center gap-4">
                         {/* Score Circular Progress */}
-                        <div className="relative flex items-center justify-center w-14 h-14 group-hover:scale-110 transition-transform duration-300">
+                        <div className="relative flex items-center justify-center w-14 h-14">
                           <svg className="transform -rotate-90 w-14 h-14">
                             <circle cx="28" cy="28" r="20" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-muted/20" />
                             <circle 
@@ -288,103 +288,32 @@ const Dashboard = () => {
 
       {/* Unified Floating Ad Carousel - Premium Aesthetic Upgrade */}
       {!isAdHidden && (
-        <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-3 group animate-in slide-in-from-right-8 duration-1000">
-        
-        {/* Dynamic Background Glow */}
-        <div className={`absolute inset-0 -z-10 blur-[80px] opacity-40 transition-all duration-1000 rounded-full ${currentAd === 0 ? 'bg-teal-500' : 'bg-primary'}`} />
+        <div className="fixed bottom-8 right-6 z-50 group">
+          <div
+            onClick={() => navigate(currentAd === 0 ? '/conversational-interview' : '/playground')}
+            className="h-14 w-14 hover:w-56 rounded-2xl bg-zinc-900/80 backdrop-blur-xl border border-white/15 text-white shadow-[0_10px_24px_rgba(2,6,23,0.35)] hover:shadow-[0_14px_30px_rgba(2,6,23,0.45)] transition-all duration-300 flex items-center gap-3 px-2.5 cursor-pointer overflow-hidden"
+            title={currentAd === 0 ? 'Emotional Interview' : 'Code Playground'}
+          >
+            <div className={`relative shrink-0 h-9 w-9 rounded-full flex items-center justify-center ${
+              currentAd === 0
+                ? 'bg-gradient-to-br from-teal-400 to-cyan-500 shadow-[0_0_0_2px_rgba(255,255,255,0.14)]'
+                : 'bg-gradient-to-br from-indigo-400 to-blue-500 shadow-[0_0_0_2px_rgba(255,255,255,0.14)]'
+            }`}>
+              {currentAd === 0 ? <Zap size={16} fill="currentColor" className="text-white" /> : <Code2 size={16} className="text-white" />}
+              <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-zinc-900" />
+            </div>
+            <span className="text-sm font-bold whitespace-nowrap opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+              {currentAd === 0 ? 'Emotional Interview' : 'Code Playground'}
+            </span>
+          </div>
 
-        <div className="relative overflow-hidden w-[260px] h-[76px] rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.3)] transition-all duration-500 hover:-translate-y-2 hover:shadow-primary/30 border border-white/10 bg-black/40 backdrop-blur-3xl group/card">
-          
-          {/* Close Button */}
-          <button 
+          <button
             onClick={handleDismissAd}
-            className="absolute top-2 right-2 z-[60] p-1 rounded-full bg-black/20 text-white/40 hover:text-white hover:bg-black/40 transition-all duration-300 opacity-0 group-hover/card:opacity-100"
+            className="absolute -top-2 -right-2 p-1 rounded-full bg-zinc-900/80 text-white/70 hover:text-white border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity"
             title="Hide for this session"
           >
-            <X size={14} />
+            <X size={12} />
           </button>
-          
-          {/* Shine Sweep Animation overlay */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
-            <div className="absolute -inset-[100%] bg-gradient-to-r from-transparent via-white/[0.05] to-transparent -rotate-45 animate-[shimmer_4s_infinite] transition-transform" />
-          </div>
-
-          {/* Ad 1: Emotional Interview */}
-          <div 
-            onClick={() => navigate('/conversational-interview')}
-            className={`absolute inset-0 w-full h-full cursor-pointer transition-all duration-700 transform px-4 flex items-center gap-3 bg-gradient-to-br from-teal-500/10 to-transparent ${currentAd === 0 ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
-          >
-            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover/card:scale-110 transition-transform duration-700">
-              <Zap size={60} fill="#14b8a6" />
-            </div>
-            
-            <div className="relative">
-              <div className="p-2 rounded-xl bg-teal-500 text-white shadow-[0_0_15px_rgba(20,184,166,0.4)] group-hover/card:scale-110 group-hover/card:rotate-6 transition-all duration-500">
-                <Zap size={18} fill="currentColor" />
-              </div>
-              <div className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-teal-500"></span>
-              </div>
-            </div>
-
-            <div className="flex flex-col min-w-0 font-['Outfit']">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[9px] font-black text-teal-400 uppercase tracking-[0.2em]">Recommended</span>
-                <span className="h-1 w-1 rounded-full bg-teal-500 animate-pulse"></span>
-              </div>
-              <h3 className="text-base font-black tracking-tight text-white/95 leading-none mb-1 text-shadow-sm">Emotional Interview</h3>
-              <p className="text-[10px] text-zinc-400 font-medium truncate tracking-wide">Master soft skills with adaptive AI</p>
-            </div>
-          </div>
-
-          {/* Ad 2: Code Playground */}
-          <div 
-            onClick={() => navigate('/playground')}
-            className={`absolute inset-0 w-full h-full cursor-pointer transition-all duration-700 transform px-4 flex items-center gap-3 bg-gradient-to-br from-primary/10 to-transparent ${currentAd === 1 ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'}`}
-          >
-            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover/card:scale-110 transition-transform duration-700">
-              <Code2 size={60} fill="#4d6bfe" />
-            </div>
-
-            <div className="relative">
-              <div className="p-2 rounded-xl bg-primary text-white shadow-[0_0_15px_rgba(77,107,254,0.4)] group-hover/card:scale-110 group-hover/card:-rotate-6 transition-all duration-500">
-                <Code2 size={18} />
-              </div>
-              <div className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-              </div>
-            </div>
-
-            <div className="flex flex-col min-w-0 font-['Outfit']">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[9px] font-black text-primary/90 uppercase tracking-[0.2em]">New Feature</span>
-                <span className="h-1 w-1 rounded-full bg-primary animate-pulse"></span>
-              </div>
-              <h3 className="text-base font-black tracking-tight text-white/95 leading-none mb-1 text-shadow-sm">Code Playground</h3>
-              <p className="text-[10px] text-zinc-400 font-medium truncate tracking-wide">Experiment with live coding tools</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Premium Indicators */}
-        <div className="flex gap-2 mr-6 transition-all duration-500">
-          {[0, 1].map((idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrentAd(idx)}
-              className={`h-1.5 rounded-full transition-all duration-700 shadow-sm ${currentAd === idx ? 'w-8 bg-primary shadow-primary/40' : 'w-2 bg-zinc-800 hover:bg-zinc-700'}`}
-            />
-          ))}
-        </div>
-
-        <style dangerouslySetInnerHTML={{ __html: `
-          @keyframes shimmer {
-            0% { transform: translateX(-150%) rotate(-45deg); }
-            100% { transform: translateX(150%) rotate(-45deg); }
-          }
-        ` }} />
         </div>
       )}
     </div>

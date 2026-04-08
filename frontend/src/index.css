@@ -55,9 +55,100 @@
   * {
     @apply border-border;
   }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  html,
+  body {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
+  }
+
+  /* Chromium / WebKit */
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-button {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  html::-webkit-scrollbar-button,
+  body::-webkit-scrollbar-button,
+  *::-webkit-scrollbar-button:single-button,
+  html::-webkit-scrollbar-button:single-button,
+  body::-webkit-scrollbar-button:single-button,
+  *::-webkit-scrollbar-button:vertical:start:decrement,
+  *::-webkit-scrollbar-button:vertical:end:increment,
+  html::-webkit-scrollbar-button:vertical:start:decrement,
+  html::-webkit-scrollbar-button:vertical:end:increment,
+  body::-webkit-scrollbar-button:vertical:start:decrement,
+  body::-webkit-scrollbar-button:vertical:end:increment {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+    -webkit-appearance: none;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.7);
+    border-radius: 999px;
+    border: 1.5px solid transparent;
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.85);
+    border: 1.5px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .dark *::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.55);
+    border: 1.5px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.75);
+    border: 1.5px solid transparent;
+    background-clip: padding-box;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'DM Sans', sans-serif;
+  }
+
+  #how-it-works,
+  #features,
+  #career-preparation,
+  #blog,
+  #contact-us,
+  #pricing,
+  #learn-grow {
+    scroll-margin-top: 88px;
   }
 }
 

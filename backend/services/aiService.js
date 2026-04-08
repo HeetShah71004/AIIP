@@ -594,3 +594,88 @@ export const parseResumeForBuilder = async (resumeText) => {
     projects: []
   };
 };
+
+/**
+ * Generates a recruiter-facing narrative report for a candidate.
+ * @param {object} payload
+ * @param {string} payload.candidateName
+ * @param {string} payload.candidateEmail
+ * @param {object} payload.snapshot
+ * @returns {Promise<object>}
+ */
+export const generateCandidateNarrativeReport = async ({ candidateName, candidateEmail, snapshot }) => {
+  const prompt = `
+    You are a senior recruiting analyst.
+    Create a concise hiring report for the following candidate based on interview metrics.
+
+    Candidate:
+    - Name: ${candidateName}
+    - Email: ${candidateEmail}
+
+    Metrics Snapshot:
+    ${JSON.stringify(snapshot, null, 2)}
+
+    Return JSON with EXACT fields:
+    - executiveSummary (string, 2-4 sentences)
+    - strengths (array of 3-6 short bullets)
+    - gaps (array of 3-6 short bullets)
+    - hireRecommendation (string: "Strong Hire" | "Hire" | "Hold" | "No Hire")
+    - recommendationRationale (string, 2-4 sentences)
+    - nextInterviewFocus (array of 3-5 actionable topics)
+    - confidenceScore (number 0-100)
+
+    IMPORTANT:
+    - Be objective and evidence-based.
+    - Use the metric trends and breakdowns.
+    - Return only valid JSON.
+  `;
+
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
+    try {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: { maxOutputTokens: 2000, temperature: 0.3 }
+      });
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      return extractJson(text);
+    } catch (error) {
+      console.error('Gemini Candidate Report Error:', error.message);
+    }
+  }
+
+  if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key') {
+    try {
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        max_tokens: 1200
+      });
+
+      return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+      console.error('OpenAI Candidate Report Error:', error.message);
+    }
+  }
+
+  const confidenceScore = Math.max(35, Math.min(95, Math.round((snapshot.avgScore || 0) * 10)));
+  const fallbackRecommendation =
+    (snapshot.avgScore || 0) >= 8 ? 'Strong Hire' :
+    (snapshot.avgScore || 0) >= 6.8 ? 'Hire' :
+    (snapshot.avgScore || 0) >= 5.5 ? 'Hold' : 'No Hire';
+
+  return {
+    executiveSummary: `${candidateName} has completed ${snapshot.totalCompletedSessions} evaluated sessions with an average score of ${snapshot.avgScore}/10. Recent performance trend is ${snapshot.trendDelta >= 0 ? 'improving' : 'declining'} (${snapshot.trendDelta >= 0 ? '+' : ''}${snapshot.trendDelta}). The strongest evidence appears in ${snapshot.commonStrengths.slice(0, 2).join(' and ') || 'communication and consistency'}.`,
+    strengths: snapshot.commonStrengths.slice(0, 5),
+    gaps: snapshot.commonGaps.slice(0, 5),
+    hireRecommendation: fallbackRecommendation,
+    recommendationRationale: `Recommendation is based on historical interview consistency, question-type performance, and observed trend trajectory. Candidate should be validated in a focused follow-up round on the top identified gap areas before final decision.`,
+    nextInterviewFocus: snapshot.commonSuggestions.slice(0, 4),
+    confidenceScore
+  };
+};

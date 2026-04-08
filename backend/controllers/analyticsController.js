@@ -1,6 +1,31 @@
 import Session from '../models/Session.js';
 import Question from '../models/Question.js';
 import mongoose from 'mongoose';
+import User from '../models/User.js';
+import { generateCandidateNarrativeReport } from '../services/aiService.js';
+
+const REPORT_CACHE_TTL_MS = 1000 * 60 * 60 * 6;
+const candidateReportCache = new Map();
+
+const average = (values = []) => {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+};
+
+const topFrequencyItems = (items = [], limit = 5) => {
+  const frequencies = items.reduce((acc, item) => {
+    if (!item) return acc;
+    const key = String(item).trim();
+    if (!key) return acc;
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  return Object.entries(frequencies)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name]) => name);
+};
 
 // Get high-level analytics for the user
 export const getAnalyticsSummary = async (req, res) => {
@@ -444,6 +469,137 @@ export const exportRecruiterReport = async (req, res) => {
     res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Export Report Error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// AI-generated narrative report for a single candidate (recruiter only)
+export const getCandidateAIReport = async (req, res) => {
+  try {
+    if (req.user.role !== 'recruiter') {
+      return res.status(403).json({ success: false, error: 'Only recruiters can access candidate AI reports' });
+    }
+
+    const { candidateId } = req.params;
+    const forceRefresh = String(req.query.force || '').toLowerCase() === 'true';
+
+    if (!mongoose.Types.ObjectId.isValid(candidateId)) {
+      return res.status(400).json({ success: false, error: 'Invalid candidate id' });
+    }
+
+    const candidate = await User.findById(candidateId).select('name email role');
+    if (!candidate || candidate.role !== 'candidate') {
+      return res.status(404).json({ success: false, error: 'Candidate not found' });
+    }
+
+    const cacheEntry = candidateReportCache.get(candidateId);
+    const cacheValid = cacheEntry && (Date.now() - cacheEntry.generatedAt.getTime()) < REPORT_CACHE_TTL_MS;
+
+    if (!forceRefresh && cacheValid) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          candidate: {
+            id: candidate._id,
+            name: candidate.name,
+            email: candidate.email
+          },
+          report: cacheEntry.report,
+          generatedAt: cacheEntry.generatedAt,
+          cached: true
+        }
+      });
+    }
+
+    const sessions = await Session.find({ user: candidateId, status: 'completed' })
+      .sort({ completedAt: -1, createdAt: -1 })
+      .limit(20)
+      .select('score company roleLevel interviewRound completedAt createdAt');
+
+    if (!sessions.length) {
+      return res.status(404).json({ success: false, error: 'No completed sessions found for this candidate' });
+    }
+
+    const sessionIds = sessions.map((session) => session._id);
+    const answeredQuestions = await Question.find({
+      session: { $in: sessionIds },
+      answer: { $ne: '__SKIPPED__' },
+      'feedback.score': { $exists: true, $ne: null }
+    })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .select('type feedback');
+
+    const sessionScores = sessions.map((session) => Number(session.score || 0));
+    const latestScores = sessionScores.slice(0, 5);
+    const baselineScores = sessionScores.slice(5);
+
+    const questionTypes = ['Technical', 'Behavioral', 'Coding'];
+    const byType = questionTypes.map((type) => {
+      const typedScores = answeredQuestions
+        .filter((question) => question.type === type)
+        .map((question) => Number(question.feedback?.score || 0));
+
+      return {
+        type,
+        avgScore: Number(average(typedScores).toFixed(2)),
+        attempts: typedScores.length
+      };
+    });
+
+    const strengths = topFrequencyItems(answeredQuestions.flatMap((question) => question.feedback?.strengths || []), 6);
+    const gaps = topFrequencyItems(answeredQuestions.flatMap((question) => question.feedback?.weaknesses || []), 6);
+    const suggestions = topFrequencyItems(answeredQuestions.flatMap((question) => question.feedback?.suggestions || []), 6);
+
+    const snapshot = {
+      totalCompletedSessions: sessions.length,
+      avgScore: Number(average(sessionScores).toFixed(2)),
+      bestScore: Number(Math.max(...sessionScores).toFixed(2)),
+      recentAvgScore: Number(average(latestScores).toFixed(2)),
+      baselineAvgScore: Number(average(baselineScores).toFixed(2)),
+      trendDelta: Number((average(latestScores) - average(baselineScores)).toFixed(2)),
+      questionTypeBreakdown: byType,
+      commonStrengths: strengths,
+      commonGaps: gaps,
+      commonSuggestions: suggestions,
+      recentSessionMeta: sessions.slice(0, 5).map((session) => ({
+        score: session.score,
+        company: session.company || 'General',
+        roleLevel: session.roleLevel || 'General',
+        interviewRound: session.interviewRound || 'General',
+        completedAt: session.completedAt || session.createdAt
+      }))
+    };
+
+    const aiNarrative = await generateCandidateNarrativeReport({
+      candidateName: candidate.name,
+      candidateEmail: candidate.email,
+      snapshot
+    });
+
+    const report = {
+      ...aiNarrative,
+      metrics: snapshot
+    };
+
+    const generatedAt = new Date();
+    candidateReportCache.set(candidateId, { generatedAt, report });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        candidate: {
+          id: candidate._id,
+          name: candidate.name,
+          email: candidate.email
+        },
+        report,
+        generatedAt,
+        cached: false
+      }
+    });
+  } catch (error) {
+    console.error('Candidate AI Report Error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
