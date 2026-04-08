@@ -166,6 +166,23 @@
     animation: marquee 30s linear infinite;
   }
 
+  .roadmap-node-reveal {
+    animation: roadmap-node-reveal 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .roadmap-node-float {
+    animation: roadmap-node-float 5.5s ease-in-out infinite;
+  }
+
+  .roadmap-connection {
+    stroke-dasharray: 10 10;
+    animation: roadmap-connection-dash 7s linear infinite;
+  }
+
+  .roadmap-glow {
+    animation: roadmap-glow 4s ease-in-out infinite;
+  }
+
   .pause-marquee:hover .animate-marquee {
     animation-play-state: paused;
   }
@@ -191,6 +208,50 @@
     }
     100% {
       transform: translate(0px, 0px) scale(1);
+    }
+  }
+
+  @keyframes roadmap-node-reveal {
+    0% {
+      opacity: 0;
+      transform: translateY(18px) scale(0.92);
+      filter: blur(8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+    }
+  }
+
+  @keyframes roadmap-node-float {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-7px);
+    }
+  }
+
+  @keyframes roadmap-connection-dash {
+    0% {
+      stroke-dashoffset: 0;
+    }
+    100% {
+      stroke-dashoffset: -40;
+    }
+  }
+
+  @keyframes roadmap-glow {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.08);
     }
   }
 }
