@@ -93,6 +93,7 @@
 - **MongoDB** instance (Local or Atlas)
 - **API Keys**: `GEMINI_API_KEY`, `DEEPGRAM_API_KEY`, `JUDGE0_KEY`, `GOOGLE_CLIENT_ID`
 - **SMTP Setup**: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` (for Contact Form)
+- **Peer Meeting Provider**: `PEER_MEETING_BASE_URL` (optional, defaults to `https://meet.jit.si`)
 
 ### Installation
 

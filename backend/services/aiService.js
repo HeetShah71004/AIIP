@@ -1,6 +1,118 @@
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+const DEFAULT_GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-flash-latest'
+];
+
+const geminiModelCooldownUntil = new Map();
+
+const normalizeGeminiModelName = (modelName) => {
+  const value = String(modelName || '').trim();
+  if (!value) return '';
+  return value.replace(/^models\//, '');
+};
+
+const getGeminiModelCandidates = () => {
+  const fromEnv = String(process.env.GEMINI_MODELS || '')
+    .split(',')
+    .map((m) => normalizeGeminiModelName(m))
+    .filter(Boolean);
+
+  return fromEnv.length
+    ? fromEnv
+    : DEFAULT_GEMINI_MODELS.map((m) => normalizeGeminiModelName(m));
+};
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getRetryDelayMsFromError = (message = '') => {
+  const text = String(message || '');
+  const retryInMatch = text.match(/retry in\s+([\d.]+)s/i);
+  if (retryInMatch?.[1]) {
+    return Math.max(1000, Math.round(Number(retryInMatch[1]) * 1000));
+  }
+
+  const retryDelayMatch = text.match(/"retryDelay"\s*:\s*"(\d+)s"/i);
+  if (retryDelayMatch?.[1]) {
+    return Math.max(1000, Number(retryDelayMatch[1]) * 1000);
+  }
+
+  return 0;
+};
+
+const computeModelCooldownMs = (message = '') => {
+  const text = String(message || '').toLowerCase();
+  const retryHintMs = getRetryDelayMsFromError(message);
+
+  if (text.includes('quota exceeded') || text.includes('limit: 0')) {
+    return Math.max(retryHintMs, 60 * 60 * 1000);
+  }
+
+  if (text.includes('service unavailable') || text.includes('high demand') || text.includes('[503')) {
+    return Math.max(retryHintMs, 15 * 1000);
+  }
+
+  if (text.includes('[429')) {
+    return Math.max(retryHintMs, 60 * 1000);
+  }
+
+  return 0;
+};
+
+const callGeminiWithFallback = async ({ prompt, generationConfig, operationName }) => {
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key') {
+    return null;
+  }
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const candidateModels = getGeminiModelCandidates();
+  const now = Date.now();
+
+  for (const candidateModel of candidateModels) {
+    const cooldownUntil = geminiModelCooldownUntil.get(candidateModel) || 0;
+    if (cooldownUntil > now) {
+      continue;
+    }
+
+    let retriesLeft = 1;
+
+    while (retriesLeft >= 0) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: candidateModel,
+          generationConfig
+        });
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+      } catch (error) {
+        const errorMessage = error?.message || String(error);
+        const cooldownMs = computeModelCooldownMs(errorMessage);
+        if (cooldownMs > 0) {
+          geminiModelCooldownUntil.set(candidateModel, Date.now() + cooldownMs);
+        }
+
+        const isRetryable503 = /service unavailable|high demand|\[503/i.test(errorMessage);
+        if (isRetryable503 && retriesLeft > 0) {
+          const retryMs = Math.max(getRetryDelayMsFromError(errorMessage), 2000);
+          await sleep(retryMs);
+          retriesLeft -= 1;
+          continue;
+        }
+
+        console.error(`Gemini ${operationName} Error (${candidateModel}):`, errorMessage);
+        break;
+      }
+    }
+  }
+
+  return null;
+};
+
 // Helper to extract and repair JSON from AI response
 const extractJson = (text) => {
   try {
@@ -69,7 +181,7 @@ const mockEvaluate = async (question, answer) => {
     clarity: score - 1,
     depth: score - 2,
     relevance: score,
-    analysis: "This is a mock analysis of your answer. To get real AI feedback, please add an OpenAI_API_KEY or GEMINI_API_KEY to your .env file.",
+    analysis: "This is a mock analysis of your answer. AI provider call failed or is unavailable. Check GEMINI_API_KEY, optional GEMINI_MODELS, and server logs.",
     strengths: ["Clear communication", "Good technical understanding"],
     weaknesses: ["Could be more detailed", "Minor inaccuracies"],
     suggestions: ["Try to include more real-world examples", "Explain the 'why' behind the technical concepts"]
@@ -141,20 +253,14 @@ export const evaluateAnswer = async (question, answer) => {
 
   // 1. Try Gemini first if key exists
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
-    try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
-      });
+    const text = await callGeminiWithFallback({
+      prompt,
+      generationConfig: { maxOutputTokens: 2000, temperature: 0.7 },
+      operationName: 'Evaluation'
+    });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-
+    if (text) {
       return extractJson(text);
-    } catch (error) {
-      console.error('Gemini Evaluation Error:', error.message);
     }
   }
 
@@ -208,20 +314,14 @@ export const generateFollowUpQuestion = async (previousQuestion, previousAnswer,
   `;
 
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
-    try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.8 }
-      });
+    const text = await callGeminiWithFallback({
+      prompt,
+      generationConfig: { maxOutputTokens: 2000, temperature: 0.8 },
+      operationName: 'Follow-up Generation'
+    });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-
+    if (text) {
       return extractJson(text).question;
-    } catch (error) {
-      console.error('Gemini Follow-up Generation Error:', error.message);
     }
   }
 

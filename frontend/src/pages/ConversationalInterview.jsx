@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Mic, Send, Download, AlertCircle, Heart, Zap, Brain, Sparkles, Home, ChevronLeft } from 'lucide-react';
+import { Paperclip, Mic, Send, Download, AlertCircle, Zap, Brain, Sparkles, Home } from 'lucide-react';
 import api from '../api/client';
+import { startSession, getSession, submitAnswer } from '../api/interviewApi';
 import toast from 'react-hot-toast';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,12 @@ const ConversationalInterview = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [emotionScore, setEmotionScore] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [sessionProgress, setSessionProgress] = useState({ completed: 0, total: 5 });
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [sessionStats, setSessionStats] = useState({
     confidence: 0,
     stress: 0,
@@ -22,15 +29,80 @@ const ConversationalInterview = () => {
   });
   const scrollAreaRef = useRef(null);
 
-  // Mock initial message from AI
   useEffect(() => {
-    setMessages([
-      {
-        sender: 'ai',
-        text: "Hello! I'm your AI interviewer. Let's start with your first question: Can you tell me about a challenging project you've worked on?",
-      },
-    ]);
+    const initializeSession = async () => {
+      try {
+        setIsSessionLoading(true);
+
+        const startRes = await startSession({
+          totalQuestions: 5,
+          interviewRound: 'Behavioral',
+          category: 'Fullstack',
+          difficulty: 'Medium'
+        });
+
+        const createdSession = startRes?.data;
+        if (!createdSession?._id) {
+          throw new Error('Failed to create interview session.');
+        }
+
+        setSessionId(createdSession._id);
+        setSessionProgress({
+          completed: createdSession.completedQuestions || 0,
+          total: createdSession.totalQuestions || 5
+        });
+
+        const sessionRes = await getSession(createdSession._id);
+        const allQuestions = (sessionRes?.data?.questions || []).sort(
+          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+
+        const firstPendingQuestion = allQuestions.find((q) => !q.answer) || allQuestions[0] || null;
+
+        if (!firstPendingQuestion) {
+          setMessages([
+            {
+              sender: 'ai',
+              text: 'Session started, but no questions were generated. Please try again.',
+            },
+          ]);
+          toast.error('No interview questions available right now.');
+          return;
+        }
+
+        setCurrentQuestion(firstPendingQuestion);
+        setMessages([
+          {
+            sender: 'ai',
+            text: firstPendingQuestion.text,
+          },
+        ]);
+      } catch (err) {
+        console.error('Failed to initialize conversational interview:', err);
+        setMessages([
+          {
+            sender: 'ai',
+            text: 'Could not start interview session. Please refresh and try again.',
+          },
+        ]);
+        toast.error(err?.response?.data?.message || err.message || 'Unable to start interview session');
+      } finally {
+        setIsSessionLoading(false);
+      }
+    };
+
+    initializeSession();
   }, []);
+
+  useEffect(() => {
+    if (!sessionId || !currentQuestion) return undefined;
+
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [sessionId, currentQuestion]);
 
   useEffect(() => {
     // Scroll to bottom when new messages are added
@@ -42,17 +114,53 @@ const ConversationalInterview = () => {
     }
   }, [messages]);
 
-  const handleSend = () => {
-    if (input.trim()) {
-      setMessages([...messages, { sender: 'user', text: input }]);
-      setInput('');
-      // Mock AI response
-      setTimeout(() => {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: 'ai', text: 'That sounds interesting. Can you elaborate on the technical challenges you faced?' },
+  const formatElapsed = (totalSeconds) => {
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+  };
+
+  const handleSend = async () => {
+    const answerText = input.trim();
+    if (!answerText || !sessionId || !currentQuestion || isSubmitting) return;
+
+    setInput('');
+    setIsSubmitting(true);
+    setMessages((prev) => [...prev, { sender: 'user', text: answerText }]);
+
+    try {
+      const result = await submitAnswer(sessionId, {
+        questionId: currentQuestion._id,
+        answer: answerText,
+        timeSpent: 0
+      });
+
+      const feedbackText = result?.data?.feedback?.analysis;
+      if (feedbackText) {
+        setMessages((prev) => [...prev, { sender: 'ai', text: feedbackText }]);
+      }
+
+      if (result?.sessionProgress) {
+        setSessionProgress(result.sessionProgress);
+      }
+
+      if (result?.nextQuestion?.text) {
+        setCurrentQuestion(result.nextQuestion);
+        setMessages((prev) => [...prev, { sender: 'ai', text: result.nextQuestion.text }]);
+      } else {
+        setCurrentQuestion(null);
+        setMessages((prev) => [
+          ...prev,
+          { sender: 'ai', text: 'That was the last question. Interview completed. Great work.' }
         ]);
-      }, 1000);
+        toast.success('Interview completed');
+      }
+    } catch (err) {
+      console.error('Submit answer failed:', err);
+      toast.error(err?.response?.data?.message || err.message || 'Failed to submit answer');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -132,7 +240,7 @@ const ConversationalInterview = () => {
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Confidence</span>
               <Badge variant="outline" className="text-[10px] bg-teal-500/5 text-teal-600 dark:text-teal-400 border-teal-500/20">
-                {isRecording ? 'Listening...' : isAnalyzing ? 'Analyzing...' : 'Standby'}
+                {isSessionLoading ? 'Starting...' : isRecording ? 'Listening...' : isAnalyzing ? 'Analyzing...' : currentQuestion ? 'Interviewing' : 'Completed'}
               </Badge>
             </div>
             
@@ -185,7 +293,11 @@ const ConversationalInterview = () => {
             <div className="space-y-3">
               <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/30 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
                 <span className="text-xs text-muted-foreground">Current Topic</span>
-                <span className="text-xs font-bold dark:text-zinc-200">Challenging Projects</span>
+                <span className="text-xs font-bold dark:text-zinc-200">{currentQuestion ? 'Behavioral Interview' : 'Session Complete'}</span>
+              </div>
+              <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/30 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
+                <span className="text-xs text-muted-foreground">Progress</span>
+                <span className="text-xs font-bold dark:text-zinc-200">{sessionProgress.completed}/{sessionProgress.total}</span>
               </div>
             </div>
           </div>
@@ -209,7 +321,7 @@ const ConversationalInterview = () => {
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session Active</span>
           </div>
           <div className="flex items-center gap-4">
-            <Badge variant="secondary" className="text-[10px] h-6">00:12:45</Badge>
+            <Badge variant="secondary" className="text-[10px] h-6">{formatElapsed(elapsedSeconds)}</Badge>
           </div>
         </div>
 
@@ -260,7 +372,8 @@ const ConversationalInterview = () => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Ask a question or explain your thoughts..."
+                  placeholder={isSessionLoading ? 'Starting your session...' : currentQuestion ? 'Share your answer...' : 'Interview completed'}
+                  disabled={isSessionLoading || isSubmitting || !currentQuestion}
                   className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-4 px-2 dark:text-zinc-100 placeholder:text-muted-foreground/60"
                 />
                 <div className="flex items-center gap-2">
@@ -277,7 +390,7 @@ const ConversationalInterview = () => {
                   </Button>
                   <Button 
                     onClick={handleSend} 
-                    disabled={!input.trim()}
+                    disabled={!input.trim() || isSessionLoading || isSubmitting || !currentQuestion}
                     className="w-12 h-12 rounded-full bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:grayscale"
                   >
                     <Send className="h-5 w-5" />

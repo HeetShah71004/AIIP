@@ -10,8 +10,90 @@ import {
 import { processAnswerDifficulty } from '../services/adaptiveDifficultyService.js';
 import { sendPeerInterviewReminderEmail } from '../services/emailService.js';
 
+const DEFAULT_PEER_MEETING_BASE_URL = 'https://meet.jit.si';
+
+const normalizeMeetingBaseUrl = (value) => {
+  const candidate = String(value || '').trim();
+  if (!candidate) return DEFAULT_PEER_MEETING_BASE_URL;
+  return candidate.replace(/\/+$/, '');
+};
+
+const sanitizeRoomToken = (value) => {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+    .trim();
+};
+
 const buildMeetingUrl = (sessionId) => {
-  return `https://meet.jit.si/interv-ai-peer-${sessionId}`;
+  const baseUrl = normalizeMeetingBaseUrl(
+    process.env.PEER_MEETING_BASE_URL || process.env.JITSI_BASE_URL
+  );
+  const roomToken = sanitizeRoomToken(sessionId);
+  const roomName = `interv-ai-peer-${roomToken || Date.now()}`;
+
+  const url = new URL(`${baseUrl}/${roomName}`);
+
+  if (url.hostname === 'meet.jit.si') {
+    // Lower friction defaults for the public instance.
+    url.hash = [
+      'config.prejoinPageEnabled=false',
+      'config.requireDisplayName=false'
+    ].join('&');
+  }
+
+  return url.toString();
+};
+
+const getConfiguredMeetingBaseOrigin = () => {
+  const baseUrl = normalizeMeetingBaseUrl(
+    process.env.PEER_MEETING_BASE_URL || process.env.JITSI_BASE_URL
+  );
+
+  try {
+    return new URL(baseUrl).origin;
+  } catch {
+    return new URL(DEFAULT_PEER_MEETING_BASE_URL).origin;
+  }
+};
+
+const needsMeetingUrlRefresh = (meetingJoinUrl) => {
+  if (!meetingJoinUrl) return true;
+
+  try {
+    const url = new URL(String(meetingJoinUrl));
+    const configuredOrigin = getConfiguredMeetingBaseOrigin();
+
+    if (url.origin !== configuredOrigin) return true;
+
+    if (
+      url.hostname === 'meet.jit.si'
+      && !String(url.hash || '').includes('config.prejoinPageEnabled=false')
+    ) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return true;
+  }
+};
+
+const refreshInternalMeetingUrlIfNeeded = async (sessionDoc, { persist = false } = {}) => {
+  if (!sessionDoc?.peerInterview) return sessionDoc;
+
+  const provider = String(sessionDoc.peerInterview.meetingProvider || 'internal').toLowerCase();
+  if (provider !== 'internal') return sessionDoc;
+
+  const currentUrl = sessionDoc.peerInterview.meetingJoinUrl;
+  if (!needsMeetingUrlRefresh(currentUrl)) return sessionDoc;
+
+  sessionDoc.peerInterview.meetingJoinUrl = buildMeetingUrl(sessionDoc._id);
+  if (persist) {
+    await sessionDoc.save();
+  }
+
+  return sessionDoc;
 };
 
 const isValidDate = (value) => {
@@ -604,6 +686,8 @@ export const searchPeerAvailability = async (req, res) => {
       .limit(30)
       .populate('peerInterview.hostUser', 'name email avatar');
 
+    await Promise.all(slots.map((slot) => refreshInternalMeetingUrlIfNeeded(slot, { persist: true })));
+
     const ranked = slots
       .map((slot) => ({
         ...slot.toObject(),
@@ -635,6 +719,8 @@ export const autoMatchPeer = async (req, res) => {
     const candidates = await Session.find(query)
       .limit(30)
       .populate('peerInterview.hostUser', 'name email avatar');
+
+    await Promise.all(candidates.map((slot) => refreshInternalMeetingUrlIfNeeded(slot, { persist: true })));
 
     if (candidates.length === 0) {
       return res.status(200).json({ success: true, data: null, message: 'No peer slots found right now.' });
@@ -675,6 +761,8 @@ export const bookPeerSession = async (req, res) => {
     if (target.status !== 'open') {
       return res.status(409).json({ success: false, message: 'This slot is no longer available.' });
     }
+
+    await refreshInternalMeetingUrlIfNeeded(target, { persist: true });
 
     const conflict = await Session.findOne({
       sessionType: 'peer',
@@ -729,6 +817,8 @@ export const getUpcomingPeerSessions = async (req, res) => {
       .sort({ 'peerInterview.startAt': 1 })
       .populate('peerInterview.hostUser', 'name email avatar')
       .populate('peerInterview.guestUser', 'name email avatar');
+
+    await Promise.all(sessions.map((session) => refreshInternalMeetingUrlIfNeeded(session, { persist: true })));
 
     res.status(200).json({ success: true, count: sessions.length, data: sessions });
   } catch (error) {

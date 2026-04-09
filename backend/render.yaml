@@ -22,3 +22,5 @@ services:
         value: 7d
       - key: GOOGLE_CLIENT_ID
         sync: false
+      - key: PEER_MEETING_BASE_URL
+        sync: false
