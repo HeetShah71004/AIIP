@@ -202,23 +202,52 @@ const ResumeUpload = () => {
               </div>
             </CardContent>
             <CardFooter className="pt-2">
-              <Button 
-                className="w-full text-lg h-12 gap-2 shadow-sm"
-                disabled={starting}
-                onClick={async () => {
-                  setStarting(true);
-                  try {
-                    const res = await api.post('/sessions/start', { useResume: true, totalQuestions: 5 });
-                    navigate(`/interview/${res.data.data._id}`);
-                  } catch (err) {
-                    setError('Failed to start resume-based interview');
-                    toast.error('Failed to start interview');
-                    setStarting(false);
-                  }
-                }}
-              >
-                {starting ? <LoadingSpinner size={20} message={null} /> : 'Start Interview Simulation'}
-              </Button>
+              <div className="grid gap-3 sm:grid-cols-2 w-full">
+                <Button 
+                  className="w-full text-base h-12 gap-2 shadow-sm"
+                  disabled={starting}
+                  onClick={async () => {
+                    setStarting(true);
+                    try {
+                      const res = await api.post('/sessions/start', {
+                        useResume: true,
+                        totalQuestions: 5,
+                        interviewRound: 'Behavioral'
+                      });
+                      navigate(`/interview/${res.data.data._id}`);
+                    } catch (err) {
+                      setError('Failed to start resume-based interview');
+                      toast.error('Failed to start interview');
+                      setStarting(false);
+                    }
+                  }}
+                >
+                  {starting ? <LoadingSpinner size={20} message={null} /> : 'Start Behavioral Interview'}
+                </Button>
+
+                <Button 
+                  variant="secondary"
+                  className="w-full text-base h-12 gap-2 shadow-sm"
+                  disabled={starting}
+                  onClick={async () => {
+                    setStarting(true);
+                    try {
+                      const res = await api.post('/sessions/start', {
+                        useResume: true,
+                        totalQuestions: 2,
+                        interviewRound: 'Coding'
+                      });
+                      navigate(`/interview/${res.data.data._id}`);
+                    } catch (err) {
+                      setError('Failed to start resume-based coding interview');
+                      toast.error('Failed to start coding interview');
+                      setStarting(false);
+                    }
+                  }}
+                >
+                  {starting ? <LoadingSpinner size={20} message={null} /> : 'Start Coding Interview'}
+                </Button>
+              </div>
             </CardFooter>
           </Card>
         )}

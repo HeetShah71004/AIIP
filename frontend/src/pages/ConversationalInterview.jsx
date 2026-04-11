@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Mic, Send, Download, AlertCircle, Zap, Brain, Sparkles, Home } from 'lucide-react';
+import { Mic, Send, Download, AlertCircle, Zap, Brain, Sparkles, Home, XCircle } from 'lucide-react';
 import api from '../api/client';
 import { startSession, getSession, submitAnswer } from '../api/interviewApi';
 import toast from 'react-hot-toast';
@@ -155,10 +155,54 @@ const ConversationalInterview = () => {
           { sender: 'ai', text: 'That was the last question. Interview completed. Great work.' }
         ]);
         toast.success('Interview completed');
+        navigate('/dashboard');
       }
     } catch (err) {
       console.error('Submit answer failed:', err);
       toast.error(err?.response?.data?.message || err.message || 'Failed to submit answer');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    if (!sessionId || !currentQuestion || isSubmitting) return;
+
+    setInput('');
+    setIsSubmitting(true);
+    setMessages((prev) => [...prev, { sender: 'user', text: '[Skipped]' }]);
+
+    try {
+      const result = await submitAnswer(sessionId, {
+        questionId: currentQuestion._id,
+        answer: '__SKIPPED__',
+        timeSpent: 0
+      });
+
+      const feedbackText = result?.data?.feedback?.analysis;
+      if (feedbackText) {
+        setMessages((prev) => [...prev, { sender: 'ai', text: feedbackText }]);
+      }
+
+      if (result?.sessionProgress) {
+        setSessionProgress(result.sessionProgress);
+      }
+
+      if (result?.nextQuestion?.text) {
+        setCurrentQuestion(result.nextQuestion);
+        setMessages((prev) => [...prev, { sender: 'ai', text: result.nextQuestion.text }]);
+      } else {
+        setCurrentQuestion(null);
+        setMessages((prev) => [
+          ...prev,
+          { sender: 'ai', text: 'That was the last question. Interview completed. Great work.' }
+        ]);
+        toast.success('Interview completed');
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('Skip answer failed:', err);
+      toast.error(err?.response?.data?.message || err.message || 'Failed to skip question');
     } finally {
       setIsSubmitting(false);
     }
@@ -364,8 +408,16 @@ const ConversationalInterview = () => {
             <div className="relative group">
               <div className="absolute inset-0 bg-teal-500/20 blur-2xl rounded-full opacity-0 group-focus-within:opacity-30 transition-opacity duration-500" />
               <div className="relative flex items-center transition-all duration-300 transform bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-2 pr-4 shadow-2xl focus-within:border-teal-500/50 focus-within:ring-4 ring-teal-500/5">
-                <Button variant="ghost" size="icon" className="w-12 h-12 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-                  <Paperclip className="h-5 w-5 text-muted-foreground" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRecord}
+                  className={`w-12 h-12 rounded-full transition-all duration-300 relative ${
+                    isRecording ? 'text-rose-500 bg-rose-500/10' : 'text-muted-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  {isRecording && <div className="absolute inset-0 rounded-full border-2 border-rose-500 animate-ping" />}
+                  <Mic className="h-5 w-5" />
                 </Button>
                 <input
                   type="text"
@@ -377,16 +429,15 @@ const ConversationalInterview = () => {
                   className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-4 px-2 dark:text-zinc-100 placeholder:text-muted-foreground/60"
                 />
                 <div className="flex items-center gap-2">
-                  <Button 
-                    onClick={handleRecord} 
+                  <Button
+                    onClick={handleSkip}
                     variant="ghost"
-                    size="icon" 
-                    className={`w-12 h-12 rounded-full transition-all duration-300 relative ${
-                      isRecording ? 'text-rose-500 bg-rose-500/10' : 'text-muted-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                    }`}
+                    size="icon"
+                    disabled={isSessionLoading || isSubmitting || !currentQuestion}
+                    className="w-12 h-12 rounded-full text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 transition-all disabled:opacity-50 disabled:grayscale"
+                    title="Skip Question"
                   >
-                    {isRecording && <div className="absolute inset-0 rounded-full border-2 border-rose-500 animate-ping" />}
-                    <Mic className="h-5 w-5" />
+                    <XCircle className="h-5 w-5" />
                   </Button>
                   <Button 
                     onClick={handleSend} 

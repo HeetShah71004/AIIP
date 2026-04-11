@@ -73,6 +73,27 @@ const ChatAvatar = ({ type }) => (
     </div>
 );
 
+const SUPPORTED_CODING_LANGUAGES = ['javascript', 'python', 'java', 'cpp', 'go', 'csharp'];
+const LANGUAGE_LABELS = {
+    javascript: 'JavaScript',
+    python: 'Python',
+    java: 'Java',
+    cpp: 'C++',
+    go: 'Go',
+    csharp: 'C#'
+};
+
+const LANGUAGE_STARTER_TEMPLATES = {
+    javascript: '// Start coding here...\n',
+    python: '# Start coding here...\n',
+    java: 'public class Main {\n    public static void main(String[] args) {\n        // Start coding here...\n    }\n}\n',
+    cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Start coding here...\n    return 0;\n}\n',
+    go: 'package main\n\nimport "fmt"\n\nfunc main() {\n    // Start coding here...\n    fmt.Println("Hello")\n}\n',
+    csharp: 'using System;\n\npublic class Program {\n    public static void Main(string[] args) {\n        // Start coding here...\n    }\n}\n'
+};
+
+const getStarterTemplate = (lang) => LANGUAGE_STARTER_TEMPLATES[lang] || '// Start coding here...\n';
+
 const MockInterview = () => {
     const { sessionId } = useParams();
     const navigate = useNavigate();
@@ -294,17 +315,18 @@ const MockInterview = () => {
             // Priority 1: Check overall session round type to force Theoretical UI for certain rounds
             const theoreticalRounds = ['Behavioral', 'Phone Screen', 'System Design'];
             const isForcedTheoretical = theoreticalRounds.includes(session?.interviewRound);
+            const isCodingRoundSession = session?.interviewRound === 'Coding';
             
             // Priority 2: Check individual question type (fallback for general sessions)
             const codingTypes = ['Coding', 'Technical'];
             const isCodingType = codingTypes.includes(questions[currentQuestionIndex].type);
             
-            // Set coding mode only if NOT forced theoretical AND is a coding type
-            const isCoding = !isForcedTheoretical && isCodingType;
+            // Force coding UI for Coding rounds; otherwise infer from question type.
+            const isCoding = isCodingRoundSession || (!isForcedTheoretical && isCodingType);
             setIsCodingMode(isCoding);
             
             if (isCoding) {
-                setCode(questions[currentQuestionIndex].codeTemplate || '// Start coding here...');
+                setCode(questions[currentQuestionIndex].codeTemplate || getStarterTemplate(language));
                 setOutput('');
                 setUserInput('');
             } else {
@@ -317,7 +339,7 @@ const MockInterview = () => {
                 }
             }
         }
-    }, [currentQuestionIndex, questions, session?.interviewRound]);
+    }, [currentQuestionIndex, questions, session?.interviewRound, language]);
 
     useEffect(() => {
         return () => {
@@ -523,6 +545,13 @@ const MockInterview = () => {
         }
     };
 
+    const handleLanguageChange = (nextLanguage) => {
+        if (!nextLanguage || nextLanguage === language) return;
+        setLanguage(nextLanguage);
+        setCode(getStarterTemplate(nextLanguage));
+        setOutput('');
+    };
+
     const handleSkip = async () => {
         if (submitting) return;
         setShowSkipModal(false);
@@ -717,7 +746,7 @@ const MockInterview = () => {
                             });
                             setCurrentQuestionIndex(prev => prev + 1);
                             setAnswer('');
-                            setCode('// Your code here');
+                            setCode(getStarterTemplate(language));
                         } else if (eventType === 'final') {
                             setChatHistory(prev => [...prev, {
                                 type: 'ai',
@@ -961,7 +990,23 @@ const MockInterview = () => {
                                                     <Code2 size={14} className="text-[#4d6bfe]" /> Editor
                                                 </div>
                                                 <div className="h-4 w-px bg-border/20" />
-                                                <span className="opacity-60">{language}</span>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-[10px] uppercase tracking-widest font-bold opacity-70 hover:opacity-100">
+                                                            {LANGUAGE_LABELS[language] || language}
+                                                            <ChevronDown size={12} />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="start" className="w-40">
+                                                        <DropdownMenuRadioGroup value={language} onValueChange={handleLanguageChange}>
+                                                            {SUPPORTED_CODING_LANGUAGES.map((lang) => (
+                                                                <DropdownMenuRadioItem key={lang} value={lang}>
+                                                                    {LANGUAGE_LABELS[lang] || lang}
+                                                                </DropdownMenuRadioItem>
+                                                            ))}
+                                                        </DropdownMenuRadioGroup>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </div>
                                             <Button variant="ghost" size="sm" onClick={handleRunCode} disabled={isRunning} className="h-7 text-[10px] uppercase font-bold tracking-widest text-emerald-500 hover:text-emerald-400">
                                                 {isRunning ? <Loader2 size={12} className="animate-spin mr-2" /> : <Play size={12} className="mr-2" fill="currentColor" />}

@@ -90,8 +90,11 @@ const Dashboard = () => {
       const round = session.interviewRound ? `(${session.interviewRound})` : '';
       return `${session.company} - ${role}Interview ${round}`.trim();
     }
+    if (session.interviewRound === 'Behavioral') {
+      return 'Emotional Interview Session';
+    }
     const title = session.parsedData?.developerTitle;
-    if (!title) return 'Interview Session';
+    if (!title) return session.interviewRound === 'Behavioral' ? 'Emotional Interview Session' : 'Interview Session';
     let clean = title.replace(/\b(profile|summary|objective|india|i am a|i am an|i am|an experienced|experienced|passionate|dedicated|motivated)\b/gi, '').trim();
     clean = clean.replace(/^[^\w\s]+/, '').trim();
     if (clean) {
@@ -99,7 +102,7 @@ const Dashboard = () => {
       if (clean.length > 50) clean = clean.substring(0, 47) + '...';
       return `${clean} Interview`;
     }
-    return 'Interview Session';
+    return session.interviewRound === 'Behavioral' ? 'Emotional Interview Session' : 'Interview Session';
   };
 
   return (

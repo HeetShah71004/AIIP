@@ -133,6 +133,8 @@ const calculateMatchScore = (sessionDoc, requestedTopic, requestedTimezone) => {
 export const startSession = async (req, res) => {
   try {
     const { totalQuestions = 5, category, difficulty, useResume = false, company, roleLevel, interviewRound } = req.body;
+    const requestedTotalQuestions = Number(totalQuestions) > 0 ? Number(totalQuestions) : 5;
+    const effectiveTotalQuestions = useResume && interviewRound === 'Coding' ? 2 : requestedTotalQuestions;
 
     let initialQuestions = [];
     let resumeData = null;
@@ -144,10 +146,35 @@ export const startSession = async (req, res) => {
         resumeText: { $exists: true }
       }).sort({ createdAt: -1 });
 
+      const inferredType = interviewRound === 'Coding'
+        ? 'Coding'
+        : (interviewRound === 'Technical' || interviewRound === 'System Design' ? 'Technical' : 'Behavioral');
+
       if (lastResumeSession) {
         resumeData = lastResumeSession.parsedData;
-        const generatedQuestions = await generateQuestionsFromResume(resumeData, totalQuestions);
-        initialQuestions = generatedQuestions.map(text => ({ text }));
+        const generatedQuestions = await generateQuestionsFromResume(resumeData, effectiveTotalQuestions, interviewRound || 'Technical');
+
+        initialQuestions = generatedQuestions.map(text => ({
+          text,
+          type: inferredType,
+          codeTemplate: inferredType === 'Coding' ? '// Start coding here...' : undefined
+        }));
+      }
+
+      // Hard fallback: never leave resume-based sessions without seeded questions.
+      if (initialQuestions.length === 0) {
+        const fallbackQuestions = await generateTargetedQuestions(
+          company,
+          roleLevel,
+          interviewRound || 'Technical',
+          effectiveTotalQuestions
+        );
+
+        initialQuestions = fallbackQuestions.map(text => ({
+          text,
+          type: inferredType,
+          codeTemplate: inferredType === 'Coding' ? '// Start coding here...' : undefined
+        }));
       }
     } else if (company || roleLevel || interviewRound || category || difficulty) {
       const matchQuery = {};
@@ -165,12 +192,12 @@ export const startSession = async (req, res) => {
 
       let bankQuestions = await QuestionBank.aggregate([
         { $match: matchQuery },
-        { $sample: { size: totalQuestions } }
+        { $sample: { size: effectiveTotalQuestions } }
       ]);
 
-      if (bankQuestions.length < totalQuestions) {
+      if (bankQuestions.length < effectiveTotalQuestions) {
         try {
-          const needed = totalQuestions - bankQuestions.length;
+          const needed = effectiveTotalQuestions - bankQuestions.length;
           const generatedTextArray = await generateTargetedQuestions(company, roleLevel, interviewRound, needed);
 
           // Save the generated questions back to QuestionBank to enrich the DB
@@ -207,7 +234,7 @@ export const startSession = async (req, res) => {
     // Create new session
     const session = await Session.create({
       user: req.user.id,
-      totalQuestions,
+      totalQuestions: effectiveTotalQuestions,
       status: 'pending',
       parsedData: resumeData, // Carry over parsed data if using resume
       company,
@@ -217,7 +244,7 @@ export const startSession = async (req, res) => {
 
     // If we have initial questions (from resume), create Question entries
     if (initialQuestions.length > 0) {
-      const perQuestionTime = Math.ceil(30 / totalQuestions); // Assuming 30 mins total
+      const perQuestionTime = Math.ceil(30 / effectiveTotalQuestions); // Assuming 30 mins total
       const questionPromises = initialQuestions.map(q =>
         Question.create({
           session: session._id,

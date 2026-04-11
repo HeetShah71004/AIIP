@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const DEFAULT_GEMINI_MODELS = [
   'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
   'gemini-flash-latest'
 ];
@@ -21,9 +22,11 @@ const getGeminiModelCandidates = () => {
     .map((m) => normalizeGeminiModelName(m))
     .filter(Boolean);
 
-  return fromEnv.length
-    ? fromEnv
-    : DEFAULT_GEMINI_MODELS.map((m) => normalizeGeminiModelName(m));
+  // Environment models are preferred, but we append defaults to keep reliable fallbacks.
+  const merged = [...fromEnv, ...DEFAULT_GEMINI_MODELS.map((m) => normalizeGeminiModelName(m))]
+    .filter(Boolean);
+
+  return [...new Set(merged)];
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,9 +46,33 @@ const getRetryDelayMsFromError = (message = '') => {
   return 0;
 };
 
+const isTransientNetworkError = (message = '') => {
+  const text = String(message || '').toLowerCase();
+  return [
+    'fetch failed',
+    'econnreset',
+    'etimedout',
+    'eai_again',
+    'enotfound',
+    'socket hang up',
+    'network error',
+    'network request failed'
+  ].some((token) => text.includes(token));
+};
+
+const isInvalidModelError = (message = '') => {
+  const text = String(message || '').toLowerCase();
+  return text.includes('[404') || text.includes('not found') || text.includes('unsupported model');
+};
+
 const computeModelCooldownMs = (message = '') => {
   const text = String(message || '').toLowerCase();
   const retryHintMs = getRetryDelayMsFromError(message);
+
+  if (isInvalidModelError(text)) {
+    // Avoid repeatedly calling a model ID not available for this API key/project.
+    return 24 * 60 * 60 * 1000;
+  }
 
   if (text.includes('quota exceeded') || text.includes('limit: 0')) {
     return Math.max(retryHintMs, 60 * 60 * 1000);
@@ -70,6 +97,7 @@ const callGeminiWithFallback = async ({ prompt, generationConfig, operationName 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const candidateModels = getGeminiModelCandidates();
   const now = Date.now();
+  const failedModels = [];
 
   for (const candidateModel of candidateModels) {
     const cooldownUntil = geminiModelCooldownUntil.get(candidateModel) || 0;
@@ -77,9 +105,10 @@ const callGeminiWithFallback = async ({ prompt, generationConfig, operationName 
       continue;
     }
 
-    let retriesLeft = 1;
+    const maxRetries = 3;
+    let attempt = 0;
 
-    while (retriesLeft >= 0) {
+    while (attempt <= maxRetries) {
       try {
         const model = genAI.getGenerativeModel({
           model: candidateModel,
@@ -97,17 +126,40 @@ const callGeminiWithFallback = async ({ prompt, generationConfig, operationName 
         }
 
         const isRetryable503 = /service unavailable|high demand|\[503/i.test(errorMessage);
-        if (isRetryable503 && retriesLeft > 0) {
-          const retryMs = Math.max(getRetryDelayMsFromError(errorMessage), 2000);
+        const shouldRetryTransientNetwork = isTransientNetworkError(errorMessage);
+        if ((isRetryable503 || shouldRetryTransientNetwork) && attempt < maxRetries) {
+          const serverHintMs = getRetryDelayMsFromError(errorMessage);
+          const baseMs = isRetryable503 ? 4000 : 2500;
+          const expMs = baseMs * Math.pow(2, attempt);
+          const jitterMs = Math.floor(Math.random() * 600);
+          const retryMs = Math.max(serverHintMs, expMs + jitterMs);
+
           await sleep(retryMs);
-          retriesLeft -= 1;
+          attempt += 1;
           continue;
         }
 
-        console.error(`Gemini ${operationName} Error (${candidateModel}):`, errorMessage);
+        if (isRetryable503 || shouldRetryTransientNetwork) {
+          console.warn(`Gemini ${operationName} transient issue (${candidateModel}):`, errorMessage);
+        } else {
+          console.error(`Gemini ${operationName} Error (${candidateModel}):`, errorMessage);
+        }
+
+        failedModels.push({
+          model: candidateModel,
+          transient: isRetryable503 || shouldRetryTransientNetwork,
+          message: errorMessage
+        });
         break;
       }
     }
+  }
+
+  if (failedModels.length > 0) {
+    const failures = failedModels
+      .map((f) => `${f.model}${f.transient ? ' (transient)' : ''}`)
+      .join(', ');
+    console.warn(`Gemini ${operationName} failed across candidate models: ${failures}`);
   }
 
   return null;
@@ -328,9 +380,15 @@ export const generateFollowUpQuestion = async (previousQuestion, previousAnswer,
   return "Building on that, can you explain how you would handle this in a large-scale production environment?";
 };
 
-export const generateQuestionsFromResume = async (resumeData, totalQuestions = 5) => {
+export const generateQuestionsFromResume = async (resumeData, totalQuestions = 5, interviewRound = 'Technical') => {
+  const isCodingRound = interviewRound === 'Coding';
   const prompt = `
-    Based on the following resume/profile data, generate ${totalQuestions} technical and behavioral interview questions.
+    Based on the following resume/profile data, generate ${totalQuestions} interview questions.
+    Interview Round: ${interviewRound}
+
+    ${isCodingRound
+      ? 'For Coding round, generate only practical coding challenges tailored to the candidate stack. Each question must be solvable with code and include enough problem context to start coding immediately.'
+      : 'For non-coding rounds, generate a balanced mix of technical and behavioral questions tailored to the profile.'}
     
     Resume Data:
     ${JSON.stringify(resumeData, null, 2)}
@@ -343,15 +401,15 @@ export const generateQuestionsFromResume = async (resumeData, totalQuestions = 5
 
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: { maxOutputTokens: 2000 }
+      const text = await callGeminiWithFallback({
+        prompt,
+        generationConfig: { maxOutputTokens: 2000 },
+        operationName: 'Resume Question Generation'
       });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      if (!text) {
+        throw new Error('Gemini unavailable for resume question generation');
+      }
 
       const questions = extractJson(text).questions;
       return Array.isArray(questions) ? questions : [];
@@ -361,6 +419,16 @@ export const generateQuestionsFromResume = async (resumeData, totalQuestions = 5
   }
 
   // Fallback to generic questions if AI fails
+  if (isCodingRound) {
+    return [
+      'Build a function that returns the first non-repeating character in a string and explain its time complexity.',
+      'Implement an in-memory LRU cache with get and put operations.',
+      'Given an array of intervals, merge all overlapping intervals and return the result.',
+      'Write a function to detect a cycle in a linked list.',
+      'Implement debounce in JavaScript and show a realistic usage example.'
+    ].slice(0, totalQuestions);
+  }
+
   return [
     "Tell me about your most challenging project.",
     "How do you stay updated with the latest technologies?",
@@ -390,17 +458,17 @@ export const extractStructuredDataFromResume = async (text) => {
 
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: { maxOutputTokens: 4000 }
+      const responseText = await callGeminiWithFallback({
+        prompt,
+        generationConfig: { maxOutputTokens: 4000 },
+        operationName: 'Resume Parsing'
       });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      if (!responseText) {
+        throw new Error('Gemini unavailable for resume parsing');
+      }
 
-      return extractJson(text);
+      return extractJson(responseText);
     } catch (error) {
       console.error('Gemini Resume Parsing Error:', error.message);
       throw error; // Let controller handle fallback
@@ -436,15 +504,15 @@ export const generateTargetedQuestions = async (company, roleLevel, interviewRou
 
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: { maxOutputTokens: 2000 }
+      const text = await callGeminiWithFallback({
+        prompt,
+        generationConfig: { maxOutputTokens: 2000 },
+        operationName: 'Targeted Question Generation'
       });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      if (!text) {
+        throw new Error('Gemini unavailable for targeted question generation');
+      }
 
       const questions = extractJson(text).questions;
       return Array.isArray(questions) ? questions : [];
@@ -530,15 +598,13 @@ export const rewriteResumeSection = async (text, sectionType) => {
 
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: { maxOutputTokens: 1000, temperature: 0.7 }
+      const rewritten = await callGeminiWithFallback({
+        prompt,
+        generationConfig: { maxOutputTokens: 1000, temperature: 0.7 },
+        operationName: 'Resume Rewrite'
       });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text().trim();
+      return rewritten ? rewritten.trim() : text;
     } catch (error) {
       console.error('Gemini Rewrite Error:', error.message);
     }
@@ -577,15 +643,15 @@ export const analyzeResumeATS = async (resumeData, targetKeywords = []) => {
 
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.4 }
+      const text = await callGeminiWithFallback({
+        prompt,
+        generationConfig: { maxOutputTokens: 2000, temperature: 0.4 },
+        operationName: 'ATS Analysis'
       });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      if (!text) {
+        throw new Error('Gemini unavailable for ATS analysis');
+      }
 
       return extractJson(text);
     } catch (error) {
@@ -663,19 +729,19 @@ export const parseResumeForBuilder = async (resumeText) => {
 
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: { 
+      const text = await callGeminiWithFallback({
+        prompt,
+        generationConfig: {
           maxOutputTokens: 3000, 
           temperature: 0.2,
           responseMimeType: "application/json" 
-        }
+        },
+        operationName: 'Resume Builder Parsing'
       });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      if (!text) {
+        throw new Error('Gemini unavailable for resume builder parsing');
+      }
 
       return extractJson(text);
     } catch (error) {
@@ -732,15 +798,16 @@ export const generateCandidateNarrativeReport = async ({ candidateName, candidat
 
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key') {
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.3 }
+      const text = await callGeminiWithFallback({
+        prompt,
+        generationConfig: { maxOutputTokens: 2000, temperature: 0.3 },
+        operationName: 'Candidate Narrative Report'
       });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      if (!text) {
+        throw new Error('Gemini unavailable for candidate narrative report');
+      }
+
       return extractJson(text);
     } catch (error) {
       console.error('Gemini Candidate Report Error:', error.message);
